@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { PastCases } from "@/components/PastCases";
 
 export const WORKFLOW_EXAMPLES = [
   {
@@ -40,12 +39,11 @@ export const WORKFLOW_EXAMPLES = [
 
 interface HomeHeroProps {
   onSubmit: (query: string) => Promise<void>;
-  onOpenCase: (caseId: string) => Promise<void>;
   loading: boolean;
   error: string | null;
 }
 
-export function HomeHero({ onSubmit, onOpenCase, loading, error }: HomeHeroProps) {
+export function HomeHero({ onSubmit, loading, error }: HomeHeroProps) {
   const [query, setQuery] = useState("");
 
   async function handleSubmit(e: FormEvent) {
@@ -65,7 +63,7 @@ export function HomeHero({ onSubmit, onOpenCase, loading, error }: HomeHeroProps
         }}
       />
 
-      <div className="mx-auto flex w-full max-w-3xl flex-col px-4 py-10 sm:px-8 sm:py-16 md:min-h-[100dvh] md:justify-center">
+      <div className="flex w-full flex-col px-4 py-8 sm:px-6 sm:py-12 lg:px-10 lg:py-16">
         <p className="animate-fade-up font-display text-3xl font-semibold tracking-tight text-teal-900 sm:text-5xl md:text-6xl">
           CivicAI
         </p>
@@ -143,8 +141,6 @@ export function HomeHero({ onSubmit, onOpenCase, loading, error }: HomeHeroProps
             ))}
           </ul>
         </div>
-
-        <PastCases onOpenCase={onOpenCase} loading={loading} />
       </div>
     </section>
   );

@@ -8,6 +8,19 @@ from typing import Any
 DISCLAIMER = "AI-generated draft — verify the details before submitting."
 
 
+def _contact_line(facts: dict[str, Any]) -> tuple[str, list[str]]:
+    placeholders: list[str] = []
+    phone = str(facts.get("phone") or "").strip()
+    email = str(facts.get("email") or "").strip()
+    if phone and email:
+        return f"{phone} / {email}", placeholders
+    if phone:
+        return phone, placeholders
+    if email:
+        return email, placeholders
+    return "[YOUR PHONE / EMAIL]", ["[YOUR PHONE / EMAIL]"]
+
+
 def _ph(value: Any, placeholder: str) -> tuple[str, bool]:
     if value is None:
         return placeholder, True
@@ -50,6 +63,12 @@ def generate_grievance_draft(facts: dict[str, Any], jurisdiction: dict[str, Any]
     if "AUTHORITY" in authority:
         placeholders.append(authority)
 
+    contact, contact_ph = _contact_line(facts)
+    placeholders.extend(contact_ph)
+    doc_date, used = _ph(facts.get("date"), "[DATE]")
+    if used:
+        placeholders.append("[DATE]")
+
     body = f"""To
 The Commissioner / Competent Authority
 {authority}
@@ -77,11 +96,9 @@ Thank you.
 Yours sincerely,
 {name}
 {address}
-Contact: [YOUR PHONE / EMAIL]
+Contact: {contact}
+Date: {doc_date}
 """
-
-    if "[YOUR PHONE / EMAIL]" not in placeholders:
-        placeholders.append("[YOUR PHONE / EMAIL]")
 
     return {
         "doc_type": "grievance",
@@ -138,6 +155,12 @@ def generate_rti_draft(facts: dict[str, Any], jurisdiction: dict[str, Any]) -> d
             f"3. Status and action-taken records on related complaints, if any, for the same matter and period."
         )
 
+    contact, contact_ph = _contact_line(facts)
+    placeholders.extend(contact_ph)
+    doc_date, used = _ph(facts.get("date"), "[DATE]")
+    if used:
+        placeholders.append("[DATE]")
+
     body = f"""To
 The Public Information Officer
 {authority}
@@ -164,16 +187,13 @@ I, {name}, resident of {address}, hereby request the following information under
 Applicant details:
 Name: {name}
 Address: {address}
-Contact: [YOUR PHONE / EMAIL]
+Contact: {contact}
 
 Place: {city}
-Date: [DATE]
+Date: {doc_date}
 
 Signature: ____________________
 """
-
-    placeholders.append("[YOUR PHONE / EMAIL]")
-    placeholders.append("[DATE]")
 
     return {
         "doc_type": "rti",
@@ -205,6 +225,18 @@ def generate_form_draft(facts: dict[str, Any], jurisdiction: dict[str, Any]) -> 
     if form_type.startswith("["):
         placeholders.append(form_type)
 
+    doc_date, used = _ph(facts.get("date"), "[DATE]")
+    if used:
+        placeholders.append("[DATE]")
+
+    subject = facts.get("issue_summary") or facts.get("rti_objective") or "[SUBJECT OF REQUEST]"
+    if str(subject).startswith("["):
+        placeholders.append(str(subject))
+
+    description = facts.get("issue_summary") or facts.get("rti_objective") or "[DESCRIBE YOUR REQUEST IN CLEAR WORDS]"
+    if str(description).startswith("["):
+        placeholders.append(str(description))
+
     body = f"""OFFICIAL FORM — PRE-FILLED DRAFT
 Form: {form_type}
 Jurisdiction: {city}, {state}
@@ -221,10 +253,10 @@ Email:            {email}
 ────────────────────────────────────────
 SECTION B — REQUEST / COMPLAINT DETAILS
 ────────────────────────────────────────
-Subject:          {facts.get('issue_summary') or facts.get('rti_objective') or '[SUBJECT OF REQUEST]'}
+Subject:          {subject}
 
 Description:
-{facts.get('issue_summary') or facts.get('rti_objective') or '[DESCRIBE YOUR REQUEST IN CLEAR WORDS]'}
+{description}
 
 Prior reference (if any): {facts.get('complaint_number') or '[REFERENCE NUMBER IF ANY]'}
 
@@ -234,12 +266,14 @@ SECTION C — DECLARATION
 I declare that the information provided above is true to the best of my knowledge.
 
 Place: {city}
-Date:  [DATE]
+Date:  {doc_date}
 Signature: ____________________
 
 NOTE: Verify the latest official form, fee, and submission address on the government portal before filing.
 """
-    placeholders.extend(["[DATE]", "[SUBJECT OF REQUEST]"])
+    ref = facts.get("complaint_number") or "[REFERENCE NUMBER IF ANY]"
+    if str(ref).startswith("["):
+        placeholders.append(str(ref))
 
     return {
         "doc_type": "form",

@@ -328,13 +328,25 @@ async def get_case_messages(case_id: str, db: Session = Depends(get_db)) -> list
     return _serialize_messages(case)
 
 
+def _apply_extra_details(case: Case, extra: dict | None) -> dict:
+    """Merge applicant details into case facts and jurisdiction."""
+    merged = {**(case.facts or {}), **(extra or {})}
+    case.facts = merged
+    jur = dict(case.jurisdiction or {})
+    for key in ("city", "state"):
+        if extra and extra.get(key):
+            jur[key] = extra[key]
+    case.jurisdiction = jur
+    return merged
+
+
 @router.post("/drafts/grievance", response_model=DraftResponse)
 async def draft_grievance(payload: DraftRequest, db: Session = Depends(get_db)) -> DraftResponse:
     case = db.get(Case, payload.case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Case not found.")
 
-    facts = {**(case.facts or {}), **(payload.extra_details or {})}
+    facts = _apply_extra_details(case, payload.extra_details)
     doc_data = generate_grievance_draft(facts, case.jurisdiction or {})
     doc = GeneratedDocument(
         case_id=case.id,
@@ -366,7 +378,7 @@ async def draft_rti(payload: DraftRequest, db: Session = Depends(get_db)) -> Dra
     if not case:
         raise HTTPException(status_code=404, detail="Case not found.")
 
-    facts = {**(case.facts or {}), **(payload.extra_details or {})}
+    facts = _apply_extra_details(case, payload.extra_details)
     doc_data = generate_rti_draft(facts, case.jurisdiction or {})
     doc = GeneratedDocument(
         case_id=case.id,
@@ -398,7 +410,7 @@ async def draft_form(payload: DraftRequest, db: Session = Depends(get_db)) -> Dr
     if not case:
         raise HTTPException(status_code=404, detail="Case not found.")
 
-    facts = {**(case.facts or {}), **(payload.extra_details or {})}
+    facts = _apply_extra_details(case, payload.extra_details)
     doc_data = generate_form_draft(facts, case.jurisdiction or {})
     doc = GeneratedDocument(
         case_id=case.id,

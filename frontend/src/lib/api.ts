@@ -61,21 +61,21 @@ export const api = {
       body: JSON.stringify({ message }),
     }),
 
-  draftGrievance: (caseId: string) =>
+  draftGrievance: (caseId: string, extraDetails: Record<string, string> = {}) =>
     request<DraftResponse>("/api/v1/drafts/grievance", {
       method: "POST",
-      body: JSON.stringify({ case_id: caseId }),
+      body: JSON.stringify({ case_id: caseId, extra_details: extraDetails }),
     }),
 
-  draftRti: (caseId: string) =>
+  draftRti: (caseId: string, extraDetails: Record<string, string> = {}) =>
     request<DraftResponse>("/api/v1/drafts/rti", {
       method: "POST",
-      body: JSON.stringify({ case_id: caseId }),
+      body: JSON.stringify({ case_id: caseId, extra_details: extraDetails }),
     }),
 
-  draftForm: (caseId: string) =>
+  draftForm: (caseId: string, extraDetails: Record<string, string> = {}) =>
     request<DraftResponse>("/api/v1/drafts/form", {
       method: "POST",
-      body: JSON.stringify({ case_id: caseId }),
+      body: JSON.stringify({ case_id: caseId, extra_details: extraDetails }),
     }),
 };

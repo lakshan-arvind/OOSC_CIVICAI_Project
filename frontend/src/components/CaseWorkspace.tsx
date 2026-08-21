@@ -1,7 +1,14 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import type { ApplicantDetails } from "@/lib/applicantDetails";
+import {
+  isApplicantDetailsComplete,
+  toExtraDetails,
+} from "@/lib/applicantDetails";
+import { downloadDocument } from "@/lib/downloadDocument";
 import type { ChatMessage, GeneratedDocument, StructuredCaseResponse } from "@/lib/types";
+import { ApplicantDetailsForm } from "@/components/ApplicantDetailsForm";
 import { ChatHistory } from "@/components/ChatHistory";
 
 interface CaseWorkspaceProps {
@@ -11,10 +18,12 @@ interface CaseWorkspaceProps {
   loading: boolean;
   error: string | null;
   document: GeneratedDocument | null;
+  applicantDetails: ApplicantDetails;
+  onApplicantDetailsChange: (details: ApplicantDetails) => void;
   onReply: (message: string) => Promise<void>;
-  onGenerateComplaint: () => Promise<void>;
-  onGenerateRti: () => Promise<void>;
-  onGenerateForm: () => Promise<void>;
+  onGenerateComplaint: (extra: Record<string, string>) => Promise<void>;
+  onGenerateRti: (extra: Record<string, string>) => Promise<void>;
+  onGenerateForm: (extra: Record<string, string>) => Promise<void>;
   onStartNew: () => void;
   draftLoading: boolean;
 }
@@ -37,7 +46,9 @@ export function CaseWorkspace({
   messages,
   loading,
   error,
-  document,
+  document: generatedDocument,
+  applicantDetails,
+  onApplicantDetailsChange,
   onReply,
   onGenerateComplaint,
   onGenerateRti,
@@ -46,6 +57,7 @@ export function CaseWorkspace({
   draftLoading,
 }: CaseWorkspaceProps) {
   const [reply, setReply] = useState("");
+  const [showDetailsErrors, setShowDetailsErrors] = useState(false);
   const collecting = response.status === "collecting";
 
   async function handleReply(e: FormEvent) {
@@ -56,37 +68,44 @@ export function CaseWorkspace({
     await onReply(msg);
   }
 
+  async function runDraft(
+    action: (extra: Record<string, string>) => Promise<void>
+  ) {
+    if (!isApplicantDetailsComplete(applicantDetails)) {
+      setShowDetailsErrors(true);
+      window.document.getElementById("applicant-details")?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+    setShowDetailsErrors(false);
+    await action(toExtraDetails(applicantDetails));
+  }
+
   return (
     <div className="min-h-[100dvh] bg-[linear-gradient(180deg,#f7f4ef_0%,#eef3f1_40%,#f8faf9_100%)]">
       <header className="border-b border-stone-200/80 bg-white/70 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <div>
-            <p className="font-display text-xl font-semibold text-teal-900">CivicAI</p>
-            <p className="text-xs text-stone-500">Case {caseId.slice(0, 8)}</p>
+        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="min-w-0">
+            <p className="font-display text-lg font-semibold text-teal-900 sm:text-xl">
+              CivicAI
+            </p>
+            <p className="truncate text-xs text-stone-500">
+              {domainLabel(response.domain)} · Case {caseId.slice(0, 8)}
+            </p>
           </div>
           <button
             type="button"
             onClick={onStartNew}
-            className="min-h-10 rounded-md border border-stone-300 bg-white px-3 text-sm text-stone-700 hover:bg-stone-50"
+            className="shrink-0 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 hover:bg-stone-50"
           >
-            Start New Case
+            New case
           </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-5 py-8 sm:px-8 sm:py-10">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-800">
-          Your case
-        </p>
-        <h1 className="mt-2 font-display text-2xl text-stone-900 sm:text-3xl">
-          {domainLabel(response.domain)}
-        </h1>
-
+      <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <ChatHistory messages={messages} loading={loading} />
 
-        {loading && messages.length > 0 && (
-          <p className="sr-only">Loading response</p>
-        )}
+        {loading && messages.length > 0 && <p className="sr-only">Loading response</p>}
 
         {loading && messages.length === 0 && (
           <p className="mt-6 animate-pulse text-sm text-teal-800">
@@ -100,26 +119,17 @@ export function CaseWorkspace({
             className="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
           >
             <p>{error}</p>
-            <button
-              type="button"
-              className="mt-2 text-sm font-medium underline"
-              onClick={() => window.location.reload()}
-            >
-              Retry
-            </button>
           </div>
         )}
 
         {collecting && !loading && (
-          <section className="mt-8">
-            <p className="text-base leading-relaxed text-stone-700 whitespace-pre-line">
+          <section className="mt-6">
+            <p className="whitespace-pre-line text-base leading-relaxed text-stone-700">
               {response.message ||
                 "CivicAI needs a little more information to understand your situation."}
             </p>
             {response.pending_question && (
-              <p className="mt-4 font-medium text-stone-900">
-                {response.pending_question}
-              </p>
+              <p className="mt-4 font-medium text-stone-900">{response.pending_question}</p>
             )}
             <form onSubmit={handleReply} className="mt-6">
               <label htmlFor="reply" className="sr-only">
@@ -148,18 +158,14 @@ export function CaseWorkspace({
         )}
 
         {response.status === "ready" && !loading && (
-          <div className="mt-8 space-y-10">
+          <div className="mt-6 space-y-8 pb-8">
             <section>
               <h2 className="font-display text-xl text-stone-900">Your situation</h2>
-              <p className="mt-3 text-base leading-relaxed text-stone-700">
-                {response.summary}
-              </p>
+              <p className="mt-3 text-base leading-relaxed text-stone-700">{response.summary}</p>
             </section>
 
             <section>
-              <h2 className="font-display text-xl text-stone-900">
-                What official sources say
-              </h2>
+              <h2 className="font-display text-xl text-stone-900">What official sources say</h2>
               {response.supported_information.length === 0 ? (
                 <p className="mt-3 text-stone-600">
                   {response.uncertainties[0] ||
@@ -168,19 +174,9 @@ export function CaseWorkspace({
               ) : (
                 <ul className="mt-3 space-y-3">
                   {response.supported_information.map((item) => (
-                    <li
-                      key={item.text}
-                      className="text-base leading-relaxed text-stone-700"
-                    >
+                    <li key={item.text} className="text-base leading-relaxed text-stone-700">
                       {item.text}
                     </li>
-                  ))}
-                </ul>
-              )}
-              {response.uncertainties.length > 0 && (
-                <ul className="mt-4 space-y-2 text-sm text-amber-900">
-                  {response.uncertainties.map((u) => (
-                    <li key={u}>{u}</li>
                   ))}
                 </ul>
               )}
@@ -195,28 +191,35 @@ export function CaseWorkspace({
               </ol>
             </section>
 
-            <section>
-              <h2 className="font-display text-xl text-stone-900">
-                Information / documents you may need
+            <section
+              id="applicant-details"
+              className="rounded-md border border-stone-200 bg-white p-4 sm:p-5"
+            >
+              <h2 className="font-display text-lg text-stone-900 sm:text-xl">
+                Your details for the document
               </h2>
-              <ul className="mt-3 list-disc space-y-2 pl-5 text-base text-stone-700">
-                {response.documents_needed.map((d) => (
-                  <li key={d}>{d}</li>
-                ))}
-              </ul>
+              <p className="mt-2 text-sm text-stone-600">
+                Fill in your information below. CivicAI will insert these details into the
+                generated form or draft.
+              </p>
+              <div className="mt-4">
+                <ApplicantDetailsForm
+                  details={applicantDetails}
+                  onChange={onApplicantDetailsChange}
+                  showErrors={showDetailsErrors}
+                />
+              </div>
             </section>
 
-            <section className="sticky bottom-0 -mx-4 border-t border-stone-200 bg-[#f7f4ef]/95 px-4 py-4 backdrop-blur sm:-mx-8 sm:px-8">
-              <h2 className="font-display text-base text-stone-900 sm:text-lg">
-                Generate a document
-              </h2>
+            <section className="rounded-md border border-stone-200 bg-[#f7f4ef]/95 p-4 sm:p-5">
+              <h2 className="font-display text-lg text-stone-900">Generate a document</h2>
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 {(response.domain === "grievance" || !response.domain) && (
                   <button
                     type="button"
                     disabled={draftLoading}
-                    onClick={onGenerateComplaint}
-                    className="min-h-12 flex-1 rounded-md bg-teal-800 px-4 text-sm text-white hover:bg-teal-900 disabled:opacity-50 sm:text-base"
+                    onClick={() => runDraft(onGenerateComplaint)}
+                    className="min-h-12 flex-1 rounded-md bg-teal-800 px-4 text-sm text-white hover:bg-teal-900 disabled:opacity-50 sm:min-w-[12rem]"
                   >
                     {draftLoading ? "Preparing draft..." : "Generate Complaint"}
                   </button>
@@ -225,8 +228,8 @@ export function CaseWorkspace({
                   <button
                     type="button"
                     disabled={draftLoading}
-                    onClick={onGenerateRti}
-                    className="min-h-12 flex-1 rounded-md bg-teal-800 px-4 text-sm text-white hover:bg-teal-900 disabled:opacity-50 sm:text-base"
+                    onClick={() => runDraft(onGenerateRti)}
+                    className="min-h-12 flex-1 rounded-md bg-teal-800 px-4 text-sm text-white hover:bg-teal-900 disabled:opacity-50"
                   >
                     Generate RTI Draft
                   </button>
@@ -236,16 +239,16 @@ export function CaseWorkspace({
                     <button
                       type="button"
                       disabled={draftLoading}
-                      onClick={onGenerateForm}
-                      className="min-h-12 flex-1 rounded-md bg-teal-800 px-4 text-sm text-white hover:bg-teal-900 disabled:opacity-50 sm:text-base"
+                      onClick={() => runDraft(onGenerateForm)}
+                      className="min-h-12 flex-1 rounded-md bg-teal-800 px-4 text-sm text-white hover:bg-teal-900 disabled:opacity-50"
                     >
                       Generate Pre-filled Form
                     </button>
                     <button
                       type="button"
                       disabled={draftLoading}
-                      onClick={onGenerateRti}
-                      className="min-h-12 flex-1 rounded-md border border-teal-800 px-4 text-sm text-teal-900 hover:bg-teal-50 disabled:opacity-50 sm:text-base"
+                      onClick={() => runDraft(onGenerateRti)}
+                      className="min-h-12 flex-1 rounded-md border border-teal-800 px-4 text-sm text-teal-900 hover:bg-teal-50 disabled:opacity-50"
                     >
                       Generate RTI Draft
                     </button>
@@ -254,16 +257,31 @@ export function CaseWorkspace({
               </div>
             </section>
 
-            {document && (
-              <section className="rounded-md border border-stone-200 bg-white p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-                  {document.disclaimer}
-                </p>
+            {generatedDocument && (
+              <section className="rounded-md border border-stone-200 bg-white p-4 sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                    {generatedDocument.disclaimer}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => downloadDocument(generatedDocument)}
+                    className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-teal-800 px-4 text-sm font-medium text-teal-900 hover:bg-teal-50"
+                  >
+                    Download .txt
+                  </button>
+                </div>
                 <h3 className="mt-3 font-display text-xl text-stone-900">
-                  {document.title}
+                  {generatedDocument.title}
                 </h3>
-                <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-relaxed text-stone-800">
-                  {document.body}
+                {generatedDocument.placeholders_used.length > 0 && (
+                  <p className="mt-2 text-sm text-amber-800">
+                    Some placeholders remain — update your details above and regenerate if
+                    needed: {generatedDocument.placeholders_used.join(", ")}
+                  </p>
+                )}
+                <pre className="mt-4 max-h-[28rem] overflow-auto whitespace-pre-wrap rounded-md bg-stone-50 p-4 font-sans text-sm leading-relaxed text-stone-800">
+                  {generatedDocument.body}
                 </pre>
               </section>
             )}
@@ -283,17 +301,7 @@ export function CaseWorkspace({
                           ? "Official source"
                           : "Trusted source"}
                     </p>
-                    <h3 className="mt-1 text-base font-medium text-stone-900">
-                      {c.title}
-                    </h3>
-                    {c.authority && (
-                      <p className="mt-1 text-sm text-stone-600">{c.authority}</p>
-                    )}
-                    <div className="mt-2 space-y-1 text-sm text-stone-500">
-                      {c.section && <p>Section: {c.section}</p>}
-                      {c.page && <p>Page: {c.page}</p>}
-                      {c.last_verified && <p>Last verified: {c.last_verified}</p>}
-                    </div>
+                    <h3 className="mt-1 text-base font-medium text-stone-900">{c.title}</h3>
                     {c.source_url && (
                       <a
                         href={c.source_url}
