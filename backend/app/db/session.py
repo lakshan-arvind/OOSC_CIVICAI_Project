@@ -8,6 +8,9 @@ from app.core.config import get_settings
 settings = get_settings()
 
 connect_args = {"check_same_thread": False} if settings.is_sqlite else {}
+if not settings.is_sqlite and "sslmode=" not in settings.database_url:
+    # Render external Postgres URLs may require SSL; internal URLs ignore this safely.
+    connect_args = {**connect_args, "sslmode": "prefer"}
 engine = create_engine(
     settings.database_url,
     connect_args=connect_args,

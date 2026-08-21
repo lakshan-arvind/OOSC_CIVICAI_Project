@@ -168,7 +168,9 @@ If you prefer not to use the Blueprint:
 |---------|--------|
 | Root Directory | `backend` |
 | Build Command | `pip install --upgrade pip && pip install -r requirements-prod.txt` |
-| Start Command | `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+
+Tables are created automatically on startup via `init_db()` — no `preDeployCommand` on free tier.
 
 Link a PostgreSQL database and set the same env vars as in `render.yaml`.
 
