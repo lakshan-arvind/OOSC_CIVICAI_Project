@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, warmBackend } from "@/lib/api";
 import {
   addCaseToHistory,
   CASE_STORAGE_KEY,
@@ -38,6 +38,10 @@ export default function HomePage() {
 
   useEffect(() => {
     setPastCount(getCaseHistory().length);
+  }, []);
+
+  useEffect(() => {
+    warmBackend();
   }, []);
 
   useEffect(() => {

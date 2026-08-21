@@ -36,7 +36,8 @@ class OllamaProvider(LLMProvider):
 
     async def health(self) -> str:
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
+            timeout = self.settings.ollama_health_timeout_seconds
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 r = await client.get(f"{self.base_url}/api/tags")
                 if r.status_code == 200:
                     return "ok"
@@ -157,6 +158,12 @@ _provider: Optional[LLMProvider] = None
 async def get_llm() -> LLMProvider:
     global _provider
     if _provider is not None:
+        return _provider
+
+    settings = get_settings()
+    if settings.llm_provider == "fallback" or settings.is_production:
+        _provider = FallbackLLMProvider()
+        logger.info("Using FallbackLLMProvider (production / configured fallback)")
         return _provider
 
     ollama = OllamaProvider()

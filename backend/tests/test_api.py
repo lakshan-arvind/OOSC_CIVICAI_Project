@@ -3,7 +3,7 @@ def test_health(client):
     assert r.status_code == 200
     data = r.json()
     assert data["app"] == "CivicAI"
-    assert data["database"] == "ok"
+    assert data["status"] == "ok"
 
 
 def test_create_case_asks_clarification(client):

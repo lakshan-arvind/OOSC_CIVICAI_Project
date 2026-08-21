@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -10,12 +12,27 @@ from app.core.logging import setup_logging
 from app.db.session import init_db
 from app.services.rag.vectorstore import seed_local_index
 
+logger = logging.getLogger(__name__)
+
+
+def _init_db_safe() -> None:
+    try:
+        init_db()
+        logger.info("Database tables ready")
+    except Exception:
+        logger.exception("Database initialization failed")
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     setup_logging()
-    init_db()
     seed_local_index()
+    settings = get_settings()
+    if settings.is_production:
+        # Do not block HTTP startup on Postgres — Render health checks need a fast listen.
+        asyncio.create_task(asyncio.to_thread(_init_db_safe))
+    else:
+        _init_db_safe()
     yield
 
 
@@ -32,9 +49,11 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
-        allow_credentials=True,
-        allow_methods=["*"],
+        allow_origin_regex=settings.cors_origin_regex,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
+        max_age=600,
     )
 
     @app.middleware("http")

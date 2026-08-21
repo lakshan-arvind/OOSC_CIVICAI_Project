@@ -30,7 +30,9 @@ services:
           name: civicai-db
           property: connectionString
       - key: CORS_ORIGINS
-        sync: false
+        value: https://oosc-civicai-project.vercel.app
+      - key: LLM_PROVIDER
+        value: fallback
       - key: TAVILY_API_KEY
         sync: false
       - key: PINECONE_API_KEY
