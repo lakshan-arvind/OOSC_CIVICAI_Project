@@ -160,6 +160,17 @@ If `DATABASE_URL` points to Postgres (see `docker-compose.yml`), connect with pg
 
 ## Production deployment
 
+### Render + Vercel (recommended)
+
+Full step-by-step guide: **[DEPLOY_VERCEL_RENDER.md](./DEPLOY_VERCEL_RENDER.md)**
+
+**Quick start:**
+
+1. Push repo to GitHub
+2. [Render Blueprints](https://dashboard.render.com/blueprints) → **New Blueprint Instance** → connect repo (`render.yaml` deploys API + PostgreSQL)
+3. [Vercel](https://vercel.com/new) → import repo → **Root Directory:** `frontend` → set `NEXT_PUBLIC_API_URL` to your Render API URL
+4. Update Render `CORS_ORIGINS` to your Vercel URL
+
 ### Environment variables
 
 **Backend (`backend/.env`):**
@@ -251,6 +262,8 @@ OOSC/
 │   └── src/
 ├── scripts/          # start-backend.ps1, start-frontend.ps1
 ├── docker-compose.yml
+├── render.yaml              # Render Blueprint (backend + Postgres)
+├── DEPLOY_VERCEL_RENDER.md  # Vercel + Render deployment guide
 ├── SAMPLE_TESTCASES.md
 └── README.md
 ```
