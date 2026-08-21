@@ -33,19 +33,38 @@ Ensure `backend/.env` and `frontend/.env.local` are **not** committed.
 
 1. Open **[Render Dashboard → Blueprints](https://dashboard.render.com/blueprints)**
 2. Click **New Blueprint Instance**
-3. Connect your GitHub account and select this repository
-4. Render reads `render.yaml` at the repo root and shows:
-   - **civicai-db** — PostgreSQL database
-   - **civicai-api** — Python web service
-5. When prompted, enter these **secret environment variables**:
+3. Connect GitHub and select **`OOSC_CIVICAI_Project`** (or your repo name)
+4. Render shows a **preview of `render.yaml`** — this is normal. You should see:
+   - `civicai-db` (PostgreSQL, free, Singapore)
+   - `civicai-api` (Python web service, free, Singapore)
+5. Click **Continue** / **Next**. Render asks for **secret environment variables**. Enter:
 
-   | Variable | Example value |
+   | Variable | What to enter |
    |----------|----------------|
-   | `CORS_ORIGINS` | `https://your-app.vercel.app` *(update after Vercel deploy)* |
-   | `TAVILY_API_KEY` | Your Tavily key |
-   | `PINECONE_API_KEY` | *(leave blank if unused)* |
+   | `CORS_ORIGINS` | Your Vercel URL, e.g. `https://your-app.vercel.app` *(no trailing slash)* |
+   | `TAVILY_API_KEY` | Your Tavily API key from `backend/.env` |
+   | `PINECONE_API_KEY` | Leave **empty** if you don't use Pinecone |
 
-6. Click **Apply** and wait for both resources to deploy (5–10 minutes first time).
+   > If Vercel isn't deployed yet, use a placeholder like `http://localhost:3000` for now, then update `CORS_ORIGINS` in Render → civicai-api → Environment after Vercel goes live.
+
+6. Click **Apply** / **Create Blueprint** and wait 5–10 minutes.
+
+**If Blueprint fails:**
+
+| Error | Fix |
+|-------|-----|
+| "Only one free Postgres database allowed" | Delete an old free DB in Render, or upgrade an existing one |
+| Build failed on `pip install` | Check Render build logs; ensure **Root Directory** is `backend` |
+| `alembic upgrade head` failed | Confirm `civicai-db` is linked; redeploy after DB is ready |
+| Service live but frontend can't connect | Set `CORS_ORIGINS` to exact Vercel HTTPS URL and redeploy |
+
+**After deploy**, your API URL will look like:
+
+```
+https://civicai-api.onrender.com
+```
+
+Use that as `NEXT_PUBLIC_API_URL` on Vercel.
 
 ### Step 3: Verify backend
 

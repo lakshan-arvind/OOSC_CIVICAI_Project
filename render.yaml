@@ -1,9 +1,9 @@
 # CivicAI — Render Blueprint (backend + PostgreSQL)
 #
-# One-click deploy:
-#   1. Push this repo to GitHub
+# Deploy:
+#   1. Push repo to GitHub (branch: main)
 #   2. https://dashboard.render.com/blueprints → New Blueprint Instance
-#   3. Connect the repo and enter secret env vars when prompted
+#   3. Select repo → review this file → fill secret env vars → Apply
 #   4. Deploy frontend on Vercel (see DEPLOY_VERCEL_RENDER.md)
 
 databases:
@@ -18,10 +18,11 @@ services:
     runtime: python
     plan: free
     region: singapore
+    branch: main
     rootDir: backend
     pythonVersion: "3.12.8"
-    buildCommand: pip install --upgrade pip && pip install -r requirements-prod.txt
-    preDeployCommand: alembic upgrade head
+    buildCommand: ./build.sh
+    preDeployCommand: ./predeploy.sh
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/v1/health
     envVars:
