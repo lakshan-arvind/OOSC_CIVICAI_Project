@@ -7,33 +7,38 @@ import type {
   DraftResponse,
 } from "./types";
 
-const PRODUCTION_BACKEND = "https://civicai-api.onrender.com";
-const REQUEST_TIMEOUT_MS = 120_000;
-const RETRY_DELAY_MS = 4_000;
+const LOCAL_API = "http://localhost:8000";
+const REQUEST_TIMEOUT_MS = 60_000;
+const RETRY_DELAY_MS = 2_000;
 const MAX_ATTEMPTS = 2;
 
 function isLocalHost(hostname: string) {
   return hostname === "localhost" || hostname === "127.0.0.1";
 }
 
-/** Resolve API base URL. Production uses same-origin `/api` proxy (see next.config rewrites). */
-export function resolveApiBase(): string {
-  const configured = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
-  if (configured) return configured;
+function isProductionHost(hostname: string) {
+  return hostname.endsWith(".vercel.app") || hostname.includes("vercel.app");
+}
 
+/**
+ * Production on Vercel uses built-in Next.js API routes (same origin).
+ * Local dev uses FastAPI on localhost:8000 unless overridden.
+ */
+export function resolveApiBase(): string {
   if (typeof window !== "undefined") {
     if (isLocalHost(window.location.hostname)) {
-      return "http://localhost:8000";
+      return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || LOCAL_API;
     }
-    // Vercel production: proxy through same origin (no CORS, no localhost mistake).
-    return "";
+    if (isProductionHost(window.location.hostname)) {
+      return "";
+    }
   }
 
   if (process.env.VERCEL) {
     return "";
   }
 
-  return PRODUCTION_BACKEND;
+  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || LOCAL_API;
 }
 
 function sleep(ms: number) {
@@ -42,15 +47,9 @@ function sleep(ms: number) {
 
 function networkErrorMessage(cause: unknown): string {
   if (cause instanceof DOMException && cause.name === "AbortError") {
-    return (
-      "The server is taking too long to respond. On the free Render plan the first " +
-      "request can take up to 90 seconds while the server wakes up — please try again."
-    );
+    return "The request timed out. Please try again.";
   }
-  return (
-    "Could not reach the CivicAI server. If this is your first visit today, wait a " +
-    "moment and try again while the backend wakes up on Render."
-  );
+  return "Could not reach CivicAI. Please check your connection and try again.";
 }
 
 async function requestOnce<T>(path: string, init?: RequestInit): Promise<T> {
@@ -116,6 +115,7 @@ export const api = {
 
   getMessages: (caseId: string) =>
     request<ChatMessage[]>(`/api/v1/cases/${caseId}/messages`),
+
   createCase: (query: string) =>
     request<CreateCaseResponse>("/api/v1/cases", {
       method: "POST",
@@ -147,9 +147,8 @@ export const api = {
     }),
 };
 
-/** Wake the Render backend on page load so the first submit is faster. */
 export function warmBackend() {
   void api.health().catch(() => {
-    /* ignore warm-up failures */
+    /* ignore */
   });
 }

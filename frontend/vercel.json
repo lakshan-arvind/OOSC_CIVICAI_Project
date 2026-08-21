@@ -2,14 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "npm ci",
-  "buildCommand": "npm run build",
-  "env": {
-    "BACKEND_URL": "https://civicai-api.onrender.com"
-  },
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://civicai-api.onrender.com/api/:path*"
-    }
-  ]
+  "buildCommand": "npm run build"
 }
