@@ -1,54 +1,59 @@
-# Production connection checklist (fix "temporarily unavailable")
+# Production connection checklist (fix "pending" / "temporarily unavailable")
 
-## 1. Render backend env vars
+## 1. Render backend (critical)
 
-Render Dashboard → **civicai-api** → **Environment**:
+Render Dashboard → **civicai-api** → **Environment** — set:
 
 | Variable | Required value |
 |----------|----------------|
-| `CORS_ORIGINS` | `https://oosc-civicai-project.vercel.app` |
-| `TAVILY_API_KEY` | Your Tavily key |
+| `DATABASE_URL` | `sqlite:///./data/civic_ai.db` |
 | `ENVIRONMENT` | `production` |
-| `DATABASE_URL` | Auto-linked from `civicai-db` |
+| `LLM_PROVIDER` | `fallback` |
+| `CORS_ORIGINS` | `https://oosc-civicai-project.vercel.app` |
+| `TAVILY_API_KEY` | Your Tavily key (optional but recommended) |
 
-Click **Save Changes** → wait for redeploy.
+**Remove or override** any old Postgres `DATABASE_URL` linked to `civicai-db` — that was causing the server to hang on startup.
 
-Test (may take ~60s on first request — free tier cold start):
+Click **Save Changes**, then **Manual Deploy** → Deploy latest commit.
+
+Test (first request may take ~60s on free tier cold start):
 
 ```
-https://civicai-api.onrender.com/api/v1/health
+https://civicai-api.onrender.com/health
 ```
 
-Expected JSON: `"status":"ok"`, `"database":"ok"`
+Expected: `{"status":"ok","app":"CivicAI"}` in under 5 seconds after deploy is live.
 
 ---
 
-## 2. Vercel frontend env vars
+## 2. Vercel frontend
 
-Vercel Dashboard → **oosc-civicai-project** → **Settings** → **Environment Variables**:
+The frontend now proxies API calls through Vercel (`/api/v1/...` → Render). **You do not need `NEXT_PUBLIC_API_URL` on Vercel** unless you want to override the default.
 
-| Variable | Required value |
-|----------|----------------|
-| `NEXT_PUBLIC_API_URL` | `https://civicai-api.onrender.com` |
+After pushing the latest code, **Redeploy** on Vercel (Deployments → Redeploy).
 
-**Important:** No trailing slash. Must redeploy Vercel after adding/changing this variable.
+Optional env var:
+
+| Variable | Value |
+|----------|--------|
+| `BACKEND_URL` | `https://civicai-api.onrender.com` |
 
 ---
 
 ## 3. Verify in browser
 
 1. Open https://oosc-civicai-project.vercel.app
-2. Press **F12** → **Network** tab
+2. Press **F12** → **Network**
 3. Click **Get Help**
-4. You should see a request to `https://civicai-api.onrender.com/api/v1/cases`
+4. Request should go to **`/api/v1/cases`** on `oosc-civicai-project.vercel.app` (same origin)
 
-If the request goes to `localhost:8000`, Vercel env var is missing — fix step 2 and redeploy.
+If you still see `localhost:8000`, hard-refresh (Ctrl+Shift+R) after Vercel redeploy.
 
-If the request fails with CORS error, fix `CORS_ORIGINS` on Render (step 1).
+If request stays **pending** for 90+ seconds, check **Render → Logs** for deploy errors.
 
 ---
 
 ## 4. Free tier notes
 
-- Render sleeps after 15 min idle — first click may take **30–60 seconds**
-- Free Postgres expires after **30 days** — upgrade for long-term demos
+- Render sleeps after ~15 min idle — first request may take **30–90 seconds**
+- SQLite on Render resets if the service is redeployed (fine for demos)

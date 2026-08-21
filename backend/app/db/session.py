@@ -1,5 +1,7 @@
 from collections.abc import Generator
 
+from pathlib import Path
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -40,10 +42,6 @@ class Base(DeclarativeBase):
 
 
 def get_db() -> Generator[Session, None, None]:
-    global _db_initialized
-    if not _db_initialized:
-        init_db()
-        _db_initialized = True
     db = SessionLocal()
     try:
         yield db
@@ -53,7 +51,12 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     global _db_initialized
+    if _db_initialized:
+        return
     from app import models  # noqa: F401
+
+    if settings.is_sqlite and settings.database_url.startswith("sqlite:///./"):
+        Path("data").mkdir(parents=True, exist_ok=True)
 
     Base.metadata.create_all(bind=engine)
     _db_initialized = True

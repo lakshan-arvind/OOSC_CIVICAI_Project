@@ -27,9 +27,9 @@ def _init_db_safe() -> None:
 async def lifespan(_: FastAPI):
     setup_logging()
     seed_local_index()
+    # SQLite init is fast; keep Postgres init non-blocking in production.
     settings = get_settings()
-    if settings.is_production:
-        # Do not block HTTP startup on Postgres — Render health checks need a fast listen.
+    if settings.is_production and not settings.is_sqlite:
         asyncio.create_task(asyncio.to_thread(_init_db_safe))
     else:
         _init_db_safe()
@@ -77,6 +77,10 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(api_router)
+
+    @app.get("/health")
+    async def render_health():
+        return {"status": "ok", "app": settings.app_name}
 
     @app.get("/")
     async def root():

@@ -7,13 +7,34 @@ import type {
   DraftResponse,
 } from "./types";
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(
-  /\/$/,
-  ""
-);
+const PRODUCTION_BACKEND = "https://civicai-api.onrender.com";
 const REQUEST_TIMEOUT_MS = 120_000;
 const RETRY_DELAY_MS = 4_000;
 const MAX_ATTEMPTS = 2;
+
+function isLocalHost(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
+/** Resolve API base URL. Production uses same-origin `/api` proxy (see next.config rewrites). */
+export function resolveApiBase(): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  if (configured) return configured;
+
+  if (typeof window !== "undefined") {
+    if (isLocalHost(window.location.hostname)) {
+      return "http://localhost:8000";
+    }
+    // Vercel production: proxy through same origin (no CORS, no localhost mistake).
+    return "";
+  }
+
+  if (process.env.VERCEL) {
+    return "";
+  }
+
+  return PRODUCTION_BACKEND;
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -35,10 +56,11 @@ function networkErrorMessage(cause: unknown): string {
 async function requestOnce<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const apiBase = resolveApiBase();
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, {
+    res = await fetch(`${apiBase}${path}`, {
       ...init,
       signal: controller.signal,
       headers: {
