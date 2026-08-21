@@ -25,8 +25,8 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version="1.0.0",
         lifespan=lifespan,
-    docs_url="/docs" if settings.environment != "production" else None,
-    redoc_url="/redoc" if settings.environment != "production" else None,
+        docs_url="/docs" if not settings.is_production else None,
+        redoc_url="/redoc" if not settings.is_production else None,
     )
 
     app.add_middleware(

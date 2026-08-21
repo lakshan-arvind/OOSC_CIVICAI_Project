@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Optional
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,6 +42,14 @@ class Settings(BaseSettings):
     max_request_size_mb: int = 5
     rate_limit_per_minute: int = 60
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        """Render/Heroku often provide postgres:// — SQLAlchemy expects postgresql://."""
+        if isinstance(value, str) and value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql://", 1)
+        return value
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
@@ -48,6 +57,10 @@ class Settings(BaseSettings):
     @property
     def is_sqlite(self) -> bool:
         return self.database_url.startswith("sqlite")
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
 
 
 @lru_cache
