@@ -49,7 +49,13 @@ Ensure `backend/.env` and `frontend/.env.local` are **not** committed.
 
 6. Click **Apply** / **Create Blueprint** and wait 5–10 minutes.
 
-**If Blueprint fails:**
+**If Blueprint shows "A Blueprint file was found, but there was an issue":**
+
+- Do **not** use `pythonVersion` in `render.yaml` (invalid field). Use `PYTHON_VERSION` env var or `backend/runtime.txt` instead.
+- Ensure the file is named exactly `render.yaml` at the repo root.
+- Remove special characters from comments if validation still fails.
+
+**If Blueprint fails after Apply:**
 
 | Error | Fix |
 |-------|-----|
