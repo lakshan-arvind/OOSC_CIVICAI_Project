@@ -61,7 +61,7 @@ Ensure `backend/.env` and `frontend/.env.local` are **not** committed.
 |-------|-----|
 | "Only one free Postgres database allowed" | Delete an old free DB in Render, or upgrade an existing one |
 | Build failed on `pip install` | Check Render build logs; ensure **Root Directory** is `backend` |
-| `alembic upgrade head` failed | Confirm `civicai-db` is linked; redeploy after DB is ready |
+| `pre-deploy command is not supported for free tier` | Free tier cannot use `preDeployCommand`; migrations run in `startCommand` instead |
 | Service live but frontend can't connect | Set `CORS_ORIGINS` to exact Vercel HTTPS URL and redeploy |
 
 **After deploy**, your API URL will look like:
@@ -167,9 +167,8 @@ If you prefer not to use the Blueprint:
 | Setting | Value |
 |---------|--------|
 | Root Directory | `backend` |
-| Build Command | `pip install -r requirements-prod.txt` |
-| Pre-Deploy Command | `alembic upgrade head` |
-| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Build Command | `pip install --upgrade pip && pip install -r requirements-prod.txt` |
+| Start Command | `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
 
 Link a PostgreSQL database and set the same env vars as in `render.yaml`.
 
