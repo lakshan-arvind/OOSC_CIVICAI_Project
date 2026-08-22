@@ -1,5 +1,7 @@
 /** Domain detection and workflow helpers (ported from backend). */
 
+import { parseIndianJurisdiction, resolveLocalAuthority } from "./india-geography";
+
 export const DOMAIN_LABELS: Record<string, string> = {
   grievance: "Municipal service complaint",
   rti: "RTI drafting",
@@ -83,62 +85,8 @@ export function enrichFacts(text: string, facts: Record<string, unknown>): Recor
   return out;
 }
 
-const CITY_STATE: [RegExp, string, string][] = [
-  [/\bchennai\b/i, "Chennai", "Tamil Nadu"],
-  [/\bmumbai\b|\bbombay\b/i, "Mumbai", "Maharashtra"],
-  [/\bdelhi\b|\bnew delhi\b/i, "New Delhi", "Delhi"],
-  [/\bbengaluru\b|\bbangalore\b/i, "Bengaluru", "Karnataka"],
-  [/\bhyderabad\b/i, "Hyderabad", "Telangana"],
-  [/\bkolkata\b/i, "Kolkata", "West Bengal"],
-  [/\bpune\b/i, "Pune", "Maharashtra"],
-  [/\bahmedabad\b/i, "Ahmedabad", "Gujarat"],
-];
-
-const STATE_ONLY: [RegExp, string][] = [
-  [/\btamil\s*nadu\b|\btn\b/i, "Tamil Nadu"],
-  [/\bmaharashtra\b/i, "Maharashtra"],
-  [/\bkarnataka\b/i, "Karnataka"],
-  [/\bdelhi\b/i, "Delhi"],
-  [/\btelangana\b/i, "Telangana"],
-  [/\bwest\s*bengal\b/i, "West Bengal"],
-  [/\bgujarat\b/i, "Gujarat"],
-];
-
 export function parseJurisdiction(text: string): Record<string, string> {
-  let city: string | undefined;
-  let state: string | undefined;
-  for (const [re, c, s] of CITY_STATE) {
-    if (re.test(text)) {
-      city = c;
-      state = s;
-      break;
-    }
-  }
-  if (!state) {
-    for (const [re, s] of STATE_ONLY) {
-      if (re.test(text)) {
-        state = s;
-        break;
-      }
-    }
-  }
-  const m = text.match(/([A-Za-z][A-Za-z\s]+?),\s*([A-Za-z][A-Za-z\s]+)/);
-  if (m && !city) {
-    const maybeCity = m[1].trim();
-    const maybeState = m[2].trim();
-    if (maybeCity.length < 40 && maybeState.length < 40) {
-      city = city || maybeCity.replace(/\b\w/g, (c) => c.toUpperCase());
-      state = state || maybeState.replace(/\b\w/g, (c) => c.toUpperCase());
-    }
-  }
-  const result: Record<string, string> = { country: "India" };
-  if (city) result.city = city;
-  if (state) result.state = state;
-  if (city?.toLowerCase() === "chennai" && state?.toLowerCase().includes("tamil")) {
-    result.local_authority = "Greater Chennai Corporation";
-    result.government_level = "local";
-  }
-  return result;
+  return parseIndianJurisdiction(text);
 }
 
 export function heuristicFacts(text: string, existing: Record<string, unknown> = {}): Record<string, unknown> {
@@ -223,6 +171,7 @@ export function candidateClaims(
   jurisdiction: Record<string, unknown>
 ): string[] {
   const city = jurisdiction.city as string | undefined;
+  const state = jurisdiction.state as string | undefined;
   const area = (facts.rights_area as string) || "general";
 
   if (domain === "rti") {
@@ -266,11 +215,12 @@ export function candidateClaims(
     "Citizens should lodge municipal complaints through official municipal channels and keep the complaint reference number.",
     "If a municipal complaint remains unresolved, citizens may follow up with the local body and use applicable grievance mechanisms.",
   ];
-  if (city === "Chennai") {
+  if (city && state) {
+    const resolved = resolveLocalAuthority(city, state);
     claims.splice(
       1,
       0,
-      "For civic issues in Chennai, citizens may use Greater Chennai Corporation official citizen service channels to lodge and track complaints."
+      `For civic issues in ${city}, ${state}, use ${resolved.localAuthority} official citizen service channels to lodge and track complaints.`
     );
   }
   return claims;

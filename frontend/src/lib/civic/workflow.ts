@@ -14,6 +14,7 @@ import {
   parseJurisdiction,
   searchQuery,
 } from "./domains";
+import { resolveLocalAuthority } from "./india-geography";
 import { KNOWLEDGE_BASE, searchKnowledge } from "./knowledge";
 
 export interface WorkflowState {
@@ -121,13 +122,10 @@ export function runWorkflow(input: {
   let facts = heuristicFacts(userQuery, { ...(prior.facts || {}) });
   facts = heuristicFacts(latest, facts);
 
-  if (prior.awaiting_clarification && prior.pending_question) {
-    const pq = String(prior.pending_question).toLowerCase();
-    if (pq.includes("city") || pq.includes("state") || pq.includes("शहर") || pq.includes("நகர")) {
-      jurisdiction = mergeJurisdiction(jurisdiction, parseJurisdiction(latest));
-      if (jurisdiction.city) facts.city = jurisdiction.city;
-      if (jurisdiction.state) facts.state = jurisdiction.state;
-    }
+  if (prior.awaiting_clarification) {
+    jurisdiction = mergeJurisdiction(jurisdiction, parseJurisdiction(latest));
+    if (jurisdiction.city) facts.city = jurisdiction.city;
+    if (jurisdiction.state) facts.state = jurisdiction.state;
   }
 
   const clar = needsClarification(domain, jurisdiction, facts);
@@ -158,19 +156,24 @@ export function runWorkflow(input: {
   }
 
   if (jurisdiction.city && jurisdiction.state && !jurisdiction.local_authority) {
-    if (String(jurisdiction.city).toLowerCase() === "chennai") {
-      jurisdiction.local_authority = "Greater Chennai Corporation";
-      jurisdiction.department = "Municipal / civic services";
-      jurisdiction.government_level = "local";
-    } else {
-      jurisdiction.local_authority = `Municipal / local body for ${jurisdiction.city}`;
-      jurisdiction.government_level = "local";
-    }
+    const resolved = resolveLocalAuthority(
+      String(jurisdiction.city),
+      String(jurisdiction.state)
+    );
+    jurisdiction.local_authority = resolved.localAuthority;
+    jurisdiction.government_level = "local";
+    if (resolved.portalUrl) jurisdiction.portal_url = resolved.portalUrl;
   }
 
   const area = String(facts.rights_area || "general");
   const q = searchQuery(domain, facts, jurisdiction, userQuery);
-  const docs = searchKnowledge(q, jurisdiction.state as string | undefined, 6);
+  const docs = searchKnowledge(q, {
+    state: jurisdiction.state as string | undefined,
+    city: jurisdiction.city as string | undefined,
+    domain,
+    area,
+    topK: 6,
+  });
   const evidence = docs.map((d) => ({
     id: d.id,
     source_id: d.id,
@@ -199,16 +202,18 @@ export function runWorkflow(input: {
       ? { actions: [], documents: [] }
       : localizedActions(domain, area, authority, language);
 
-  const citations = evidence.map((e, idx) => ({
-    source_id: String(e.id || `src-${idx + 1}`),
-    title: e.title || "Official source",
-    authority: e.authority,
-    authority_level: e.authority_level || "OFFICIAL",
-    source_url: e.source_url || e.url,
-    section: e.section,
-    last_verified: e.last_verified,
-    snippet: String(e.content || "").slice(0, 220),
-  }));
+  const citations = evidence
+    .filter((e) => e.source_url && String(e.source_url).startsWith("https://"))
+    .map((e, idx) => ({
+      source_id: String(e.id || `src-${idx + 1}`),
+      title: e.title || "Official source",
+      authority: e.authority,
+      authority_level: e.authority_level || "OFFICIAL",
+      source_url: e.source_url || e.url,
+      section: e.section,
+      last_verified: e.last_verified,
+      snippet: String(e.content || "").slice(0, 220),
+    }));
 
   const supportedWithCitations = supported.map((s) => ({
     text: s.text,

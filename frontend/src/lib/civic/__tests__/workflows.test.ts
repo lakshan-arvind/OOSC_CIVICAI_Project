@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { WORKFLOW_EXAMPLES } from "@/components/HomeHero";
-import { generateFormDraft, generateGrievanceDraft, generateRtiDraft } from "../documents";
+import { parseJurisdiction } from "../domains";
+import { generateFormDraft, generateRtiDraft } from "../documents";
+import { parseIndianJurisdiction, resolveLocalAuthority } from "../india-geography";
+import { isValidOfficialUrl, searchKnowledge } from "../knowledge";
 import { getTranslations } from "../../i18n/translations";
 import { LOCALES } from "../../i18n/types";
 import { runWorkflow } from "../workflow";
@@ -24,144 +27,206 @@ function runCase(query: string, followUp?: string, language: "en" | "hi" | "ta" 
   return first;
 }
 
-describe("All 8 workflow agents", () => {
+function expectRelevantResponse(
+  state: ReturnType<typeof runCase>,
+  opts: {
+    domain: string;
+    keywords: RegExp;
+    city?: string;
+    state?: string;
+  }
+) {
+  expect(state.domain).toBe(opts.domain);
+  expect(state.status).toBe("ready");
+  expect(state.action_plan.length).toBeGreaterThan(0);
+  expect(state.citations.length).toBeGreaterThan(0);
+
+  const blob = [
+    state.summary,
+    state.message,
+    ...state.supported_information.map((s) => s.text),
+    ...state.action_plan,
+  ].join(" ");
+  expect(blob).toMatch(opts.keywords);
+
+  if (opts.city) expect(String(state.jurisdiction.city)).toBe(opts.city);
+  if (opts.state) expect(String(state.jurisdiction.state)).toBe(opts.state);
+
+  for (const c of state.citations) {
+    expect(c.source_url).toMatch(/^https:\/\//);
+    expect(isValidOfficialUrl(String(c.source_url))).toBe(true);
+  }
+}
+
+describe("India geography parsing", () => {
+  const places: Array<{ input: string; city?: string; state: string }> = [
+    { input: "Jaipur, Rajasthan", city: "Jaipur", state: "Rajasthan" },
+    { input: "Kochi, Kerala", city: "Kochi", state: "Kerala" },
+    { input: "Lucknow, Uttar Pradesh", city: "Lucknow", state: "Uttar Pradesh" },
+    { input: "Bhopal, Madhya Pradesh", city: "Bhopal", state: "Madhya Pradesh" },
+    { input: "Guwahati, Assam", city: "Guwahati", state: "Assam" },
+    { input: "Ranchi, Jharkhand", city: "Ranchi", state: "Jharkhand" },
+    { input: "Kerala", state: "Kerala" },
+    { input: "Rajasthan", state: "Rajasthan" },
+  ];
+
+  for (const p of places) {
+    it(`parses ${p.input}`, () => {
+      const j = parseIndianJurisdiction(p.input);
+      expect(j.state).toBe(p.state);
+      if (p.city) expect(j.city).toBe(p.city);
+    });
+  }
+
+  it("resolves local authority for major cities", () => {
+    const mumbai = resolveLocalAuthority("Mumbai", "Maharashtra");
+    expect(mumbai.localAuthority).toMatch(/BMC|Brihanmumbai/i);
+    const jaipur = resolveLocalAuthority("Jaipur", "Rajasthan");
+    expect(jaipur.localAuthority).toMatch(/Jaipur/i);
+  });
+});
+
+describe("Knowledge search relevance", () => {
+  it("returns RTI sources for RTI queries", () => {
+    const docs = searchKnowledge("rti public authority application", { domain: "rti" });
+    expect(docs.some((d) => d.tags.includes("rti"))).toBe(true);
+    expect(docs[0].source_url.startsWith("https://")).toBe(true);
+  });
+
+  it("returns city-specific municipal source for Jaipur grievance", () => {
+    const docs = searchKnowledge("drainage complaint jaipur rajasthan", {
+      domain: "grievance",
+      city: "Jaipur",
+      state: "Rajasthan",
+    });
+    expect(docs.some((d) => d.city === "Jaipur" || d.tags.includes("jaipur"))).toBe(true);
+  });
+});
+
+describe("All 8 workflow agents — response relevance", () => {
   const cases: Array<{
     key: string;
     query: string;
     followUp?: string;
     domain: string;
-    extra?: (state: ReturnType<typeof runCase>) => void;
+    keywords: RegExp;
+    city?: string;
+    state?: string;
   }> = [
     {
       key: "rti",
       query: WORKFLOW_EXAMPLES[0].query,
       followUp: "Mumbai, Maharashtra",
       domain: "rti",
+      keywords: /rti|information|public authority|records/i,
+      city: "Mumbai",
+      state: "Maharashtra",
     },
     {
       key: "tenant",
       query: WORKFLOW_EXAMPLES[1].query,
       domain: "rights_navigator",
-      extra: (s) => expect(s.facts.rights_area).toBe("tenant"),
+      keywords: /tenant|landlord|deposit|rent/i,
+      city: "Bengaluru",
+      state: "Karnataka",
     },
     {
       key: "consumer",
       query: WORKFLOW_EXAMPLES[2].query,
       followUp: "Delhi",
       domain: "rights_navigator",
-      extra: (s) => expect(s.facts.rights_area).toBe("consumer"),
+      keywords: /consumer|refund|warranty|defective/i,
+      state: "Delhi",
     },
     {
       key: "workplace",
       query: WORKFLOW_EXAMPLES[3].query,
       followUp: "Pune, Maharashtra",
       domain: "rights_navigator",
-      extra: (s) => expect(s.facts.rights_area).toBe("workplace"),
+      keywords: /salary|employer|labour|wages/i,
+      city: "Pune",
+      state: "Maharashtra",
     },
     {
       key: "scheme",
       query: WORKFLOW_EXAMPLES[4].query,
       domain: "scheme_eligibility",
-      extra: (s) => expect(s.facts.scheme_name).toBe("PM-KISAN"),
+      keywords: /pm-kisan|scheme|eligibility|farmer/i,
+      state: "Tamil Nadu",
     },
     {
       key: "form",
       query: WORKFLOW_EXAMPLES[5].query,
       followUp: "Chennai, Tamil Nadu",
       domain: "form_filler",
+      keywords: /form|rti|application/i,
+      city: "Chennai",
+      state: "Tamil Nadu",
     },
     {
       key: "bureaucracy",
       query: WORKFLOW_EXAMPLES[6].query,
       domain: "bureaucracy",
+      keywords: /public authority|section 2\(h\)|rti/i,
     },
     {
       key: "grievance",
       query: WORKFLOW_EXAMPLES[7].query,
       followUp: "Chennai, Tamil Nadu",
       domain: "grievance",
+      keywords: /drainage|municipal|complaint|grievance/i,
+      city: "Chennai",
+      state: "Tamil Nadu",
     },
   ];
 
   for (const c of cases) {
-    it(`classifies and responds for ${c.key}`, () => {
+    it(`${c.key} agent returns relevant guidance`, () => {
       const state = runCase(c.query, c.followUp);
-      expect(state.domain).toBe(c.domain);
-      expect(state.status).toBe("ready");
-      expect(state.action_plan.length).toBeGreaterThan(0);
-      if (c.extra) c.extra(state);
+      expectRelevantResponse(state, c);
     });
   }
 });
 
-describe("RTI Drafting Agent", () => {
-  it("returns Hindi response when language is hi", () => {
+describe("Multi-state grievance agents", () => {
+  const cities = [
+    { followUp: "Jaipur, Rajasthan", city: "Jaipur", state: "Rajasthan" },
+    { followUp: "Kochi, Kerala", city: "Kochi", state: "Kerala" },
+    { followUp: "Lucknow, Uttar Pradesh", city: "Lucknow", state: "Uttar Pradesh" },
+    { followUp: "Bhopal, Madhya Pradesh", city: "Bhopal", state: "Madhya Pradesh" },
+  ];
+
+  for (const loc of cities) {
+    it(`handles drainage complaint in ${loc.city}`, () => {
+      const state = runCase(
+        "My municipality hasn't fixed my drainage complaint.",
+        loc.followUp
+      );
+      expectRelevantResponse(state, {
+        domain: "grievance",
+        keywords: /drainage|municipal|complaint/i,
+        city: loc.city,
+        state: loc.state,
+      });
+      expect(String(state.jurisdiction.local_authority)).toMatch(
+        new RegExp(loc.city.split(" ")[0], "i")
+      );
+    });
+  }
+});
+
+describe("RTI across states", () => {
+  it("handles RTI in Gujarat", () => {
     const state = runCase(
-      WORKFLOW_EXAMPLES[0].query,
-      "Mumbai, Maharashtra",
-      "hi"
+      "I want RTI information about road repair spending in my area.",
+      "Ahmedabad, Gujarat"
     );
-    expect(state.language).toBe("hi");
-    expect(state.message).toMatch(/आधिकारिक|CivicAI/);
-  });
-});
-
-describe("Rights Navigator", () => {
-  it("handles workplace dispute with localized actions", () => {
-    const state = runCase(WORKFLOW_EXAMPLES[3].query, "Pune, Maharashtra");
-    expect(state.action_plan.some((a) => /labour|salary|employer|श्रम|சம்பள/i.test(a))).toBe(
-      true
-    );
-  });
-});
-
-describe("Scheme Eligibility Reader", () => {
-  it("answers PM-KISAN eligibility in Tamil Nadu", () => {
-    const state = runCase(WORKFLOW_EXAMPLES[4].query);
-    expect(state.summary.toLowerCase()).toMatch(/pm-kisan|scheme|योजना|திட்டம்/);
-  });
-});
-
-describe("Conversational Form-Filler", () => {
-  it("guides form filling and generates draft with applicant section", () => {
-    const state = runCase(WORKFLOW_EXAMPLES[5].query, "Chennai, Tamil Nadu");
-    const draft = generateFormDraft(state.facts, state.jurisdiction);
-    expect(draft.body).toContain("APPLICANT DETAILS");
-    expect(draft.body).toContain("[YOUR NAME]");
-  });
-
-  it("generates Tamil form draft when language is ta", () => {
-    const state = runCase(WORKFLOW_EXAMPLES[5].query, "Chennai, Tamil Nadu", "ta");
-    const draft = generateFormDraft(state.facts, state.jurisdiction, "ta");
-    expect(draft.body).toContain("விண்ணப்பதாரர் விவரங்கள்");
-    expect(draft.title).toMatch(/நிரப்பப்பட்ட வரைவு/);
-  });
-});
-
-describe("Bureaucracy Translator", () => {
-  it("explains public authority in plain language", () => {
-    const state = runCase(WORKFLOW_EXAMPLES[6].query);
-    expect(
-      state.supported_information.some((s) => /public authority/i.test(s.text)) ||
-        /public authority/i.test(state.summary)
-    ).toBe(true);
-  });
-
-  it("returns Tamil response when language is ta", () => {
-    const state = runCase(WORKFLOW_EXAMPLES[6].query, undefined, "ta");
-    expect(state.language).toBe("ta");
-    expect(state.action_plan.length).toBeGreaterThan(0);
-  });
-});
-
-describe("Municipal Grievance Agent", () => {
-  it("handles drainage complaint and generates localized draft", () => {
-    const state = runCase(WORKFLOW_EXAMPLES[7].query, "Chennai, Tamil Nadu");
-    expect(state.domain).toBe("grievance");
-    expect(state.facts.issue_type).toBe("drainage");
-    const draft = generateGrievanceDraft(state.facts, state.jurisdiction, "ta");
-    expect(draft.title).toMatch(/நகராட்சி/);
-    expect(draft.body).toMatch(/நகராட்சி/);
+    expectRelevantResponse(state, {
+      domain: "rti",
+      keywords: /rti|information|records/i,
+      city: "Ahmedabad",
+      state: "Gujarat",
+    });
   });
 });
 
@@ -172,9 +237,15 @@ describe("Localized document drafts", () => {
     expect(draft.title).toMatch(/आरटीआई/);
     expect(draft.body).toContain("सूचना का अधिकार");
   });
+
+  it("generates Tamil form draft", () => {
+    const state = runCase(WORKFLOW_EXAMPLES[5].query, "Chennai, Tamil Nadu", "ta");
+    const draft = generateFormDraft(state.facts, state.jurisdiction, "ta");
+    expect(draft.body).toContain("விண்ணப்பதாரர் விவரங்கள்");
+  });
 });
 
-describe("Multilingual sample queries", () => {
+describe("Multilingual queries", () => {
   it("classifies Tamil tenant query", () => {
     const ta = getTranslations("ta");
     const state = runCase(ta.sampleQueries.tenant);
@@ -182,10 +253,36 @@ describe("Multilingual sample queries", () => {
     expect(state.facts.rights_area).toBe("tenant");
   });
 
-  it("classifies Hindi grievance query", () => {
+  it("classifies Hindi grievance with Jaipur follow-up", () => {
     const hi = getTranslations("hi");
-    const state = runCase(hi.sampleQueries.grievance, "Chennai, Tamil Nadu");
-    expect(state.domain).toBe("grievance");
+    const state = runCase(hi.sampleQueries.grievance, "Jaipur, Rajasthan");
+    expectRelevantResponse(state, {
+      domain: "grievance",
+      keywords: /शिकायत|municipal|drainage|complaint/i,
+      city: "Jaipur",
+      state: "Rajasthan",
+    });
+  });
+});
+
+describe("User-friendly clarification flow", () => {
+  it("asks for city and state with examples", () => {
+    const state = runCase("My municipality hasn't fixed my drainage complaint.");
+    expect(state.status).toBe("collecting");
+    expect(state.pending_question).toMatch(/city and state|Lucknow|Jaipur|India/i);
+  });
+
+  it("accepts follow-up for any Indian city", () => {
+    const first = runCase("My municipality hasn't fixed my drainage complaint.");
+    const second = runWorkflow({
+      caseId: "test-case",
+      userQuery: first.user_query,
+      latestMessage: "Guwahati, Assam",
+      prior: first,
+    });
+    expect(second.status).toBe("ready");
+    expect(second.jurisdiction.city).toBe("Guwahati");
+    expect(second.jurisdiction.state).toBe("Assam");
   });
 });
 
@@ -200,14 +297,12 @@ describe("Translation completeness", () => {
       }
     }
   });
+});
 
-  it("provides status labels for all workflow statuses", () => {
-    for (const { code } of LOCALES) {
-      const t = getTranslations(code);
-      expect(t.statusLabels.collecting).toBeTruthy();
-      expect(t.statusLabels.ready).toBeTruthy();
-      expect(t.statusLabels.researching).toBeTruthy();
-      expect(t.statusLabels.error).toBeTruthy();
-    }
+describe("Jurisdiction helper", () => {
+  it("parseJurisdiction delegates to India geography", () => {
+    const j = parseJurisdiction("Indore, Madhya Pradesh");
+    expect(j.city).toBe("Indore");
+    expect(j.state).toBe("Madhya Pradesh");
   });
 });

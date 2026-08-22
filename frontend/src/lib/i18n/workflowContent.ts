@@ -6,32 +6,45 @@ export function clarificationQuestion(
   missing: string[],
   locale: Locale
 ): string {
+  const needsCity = missing.includes("city");
+  const needsState = missing.includes("state");
+
   if (domain === "form_filler") {
     if (missing.includes("form_type")) {
       return locale === "hi"
-        ? "आपको किस आधिकारिक फॉर्म में मदद चाहिए (जैसे आरटीआई आवेदन, शिकायत फॉर्म)?"
+        ? "आपको किस आधिकारिक फॉर्म में मदद चाहिए? (जैसे आरटीआई आवेदन, शिकायत फॉर्म)"
         : locale === "ta"
-          ? "எந்த அதிகாரப்பூர்வ படிவத்தில் உதவி வேண்டும் (எ.கா. ஆர்டிஐ விண்ணப்பம், புகார் படிவம்)?"
-          : "Which official form do you need help with (e.g., RTI application, grievance form)?";
+          ? "எந்த அதிகாரப்பூர்வ படிவத்தில் உதவி வேண்டும்? (எ.கா. ஆர்டிஐ விண்ணப்பம், புகார் படிவம்)"
+          : "Which official form do you need help with? (e.g. RTI application, grievance form)";
     }
     return locale === "hi"
-      ? "यह फॉर्म किस शहर और राज्य में दाखिल करना है?"
+      ? "यह फॉर्म किस शहर और राज्य में दाखिल करना है? (उदाहरण: जयपुर, राजस्थान या कोच्चि, केरल)"
       : locale === "ta"
-        ? "இந்த படிவம் எந்த நகரம் மற்றும் மாநிலத்தில் தாக்கல் செய்ய வேண்டும்?"
-        : "Which city and state should this form be filed in?";
+        ? "இந்த படிவம் எந்த நகரம் மற்றும் மாநிலத்தில் தாக்கல் செய்ய வேண்டும்? (எ.கா. ஜெய்ப்பூர், ராஜஸ்தான் அல்லது கொச்சி, கேரளா)"
+        : "Which city and state should this form be filed in? (e.g. Jaipur, Rajasthan or Kochi, Kerala)";
   }
-  if (["scheme_eligibility", "rights_navigator", "rti"].includes(domain)) {
+
+  if (needsCity && needsState) {
     return locale === "hi"
-      ? "यह किस राज्य से संबंधित है?"
+      ? "कृपया अपना शहर और राज्य बताएं — भारत का कोई भी शहर लिख सकते हैं। (उदाहरण: लखनऊ, उत्तर प्रदेश)"
       : locale === "ta"
-        ? "இது எந்த மாநிலத்தைப் பற்றியது?"
-        : "Which state is this about?";
+        ? "உங்கள் நகரம் மற்றும் மாநிலத்தைச் சொல்லுங்கள் — இந்தியாவின் எந்த நகரமும் சரி. (எ.கா. லக்னோ, உத்தரப் பிரதேசம்)"
+        : "Please tell us your city and state — any city in India works. (e.g. Lucknow, Uttar Pradesh or Jaipur, Rajasthan)";
   }
+
+  if (needsState) {
+    return locale === "hi"
+      ? "यह किस राज्य से संबंधित है? (उदाहरण: केरल, महाराष्ट्र, राजस्थान)"
+      : locale === "ta"
+        ? "இது எந்த மாநிலத்தைப் பற்றியது? (எ.கா. கேரளா, மகாராஷ்டிரா, ராஜஸ்தான்)"
+        : "Which state is this about? (e.g. Kerala, Maharashtra, Rajasthan)";
+  }
+
   return locale === "hi"
-    ? "यह समस्या किस शहर और राज्य में है?"
+    ? "कृपया अपना शहर और राज्य बताएं। (उदाहरण: भोपाल, मध्य प्रदेश)"
     : locale === "ta"
-      ? "இந்த பிரச்சினை எந்த நகரம் மற்றும் மாநிலத்தில்?"
-      : "Which city and state is this issue about?";
+      ? "உங்கள் நகரம் மற்றும் மாநிலத்தைச் சொல்லுங்கள். (எ.கா. போபால், மத்திய பிரதேசம்)"
+      : "Please tell us your city and state. (e.g. Bhopal, Madhya Pradesh)";
 }
 
 export function localizedClaims(
@@ -196,14 +209,14 @@ export function localizedClaims(
             "If unresolved, citizens may follow up using applicable grievance mechanisms.",
           ];
 
-  if (city === "Chennai") {
-    const chennaiNote =
+  if (city) {
+    const cityNote =
       locale === "hi"
-        ? "चेन्नई में, Greater Chennai Corporation के आधिकारिक नागरिक सेवा चैनलों का उपयोग करें।"
+        ? `${city} में, अपनी नगरपालिका / स्थानीय निकाय के आधिकारिक नागरिक सेवा चैनलों से शिकायत दर्ज करें और ट्रैक करें।`
         : locale === "ta"
-          ? "சென்னையில், Greater Chennai Corporation அதிகாரப்பூர்வ குடிமை சேவை சேனல்களைப் பயன்படுத்தவும்."
-          : "For civic issues in Chennai, use Greater Chennai Corporation official citizen service channels.";
-    return [grievance[0], chennaiNote, grievance[1], grievance[2]];
+          ? `${city} இல், உங்கள் நகராட்சி / உள்ளூர் அதிகாரியின் அதிகாரப்பூர்வ குடிமை சேவை சேனல்களைப் பயன்படுத்தி புகார் பதிவு செய்து கண்காணிக்கவும்.`
+          : `In ${city}, lodge and track complaints through your municipal / local body's official citizen service channels.`;
+    return [grievance[0], cityNote, grievance[1], grievance[2]];
   }
   return grievance;
 }

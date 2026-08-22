@@ -1,5 +1,7 @@
 /** Curated civic knowledge for grounded answers without external APIs. */
 
+import { CITY_DIRECTORY, statePortalUrl } from "./india-geography";
+
 export interface KnowledgeDoc {
   id: string;
   title: string;
@@ -10,56 +12,74 @@ export interface KnowledgeDoc {
   section?: string;
   last_verified: string;
   state?: string;
+  city?: string;
+  domains: string[];
   tags: string[];
 }
 
-export const KNOWLEDGE_BASE: KnowledgeDoc[] = [
+const CORE_DOCS: KnowledgeDoc[] = [
   {
     id: "rti-act-2005-overview",
     title: "Right to Information Act, 2005 — Overview",
-    authority: "Government of India / India Code",
+    authority: "Government of India",
     authority_level: "STATUTORY",
-    source_url: "https://www.indiacode.nic.in/handle/123456789/2063",
-    section: "Preamble & Section 6",
+    source_url: "https://rti.gov.in/",
+    section: "Section 6",
     last_verified: "2024-06-01",
-    tags: ["rti", "information", "public authority", "application"],
+    domains: ["rti", "form_filler"],
+    tags: ["rti", "information", "public authority", "application", "records"],
     content:
-      "The Right to Information Act, 2005 provides a practical regime of right to information for citizens to secure access to information under the control of public authorities. Under Section 6, a person seeking information shall make a request specifying particulars of the information sought.",
+      "The Right to Information Act, 2005 allows citizens to request recorded information from public authorities. An RTI application must specify the particulars of information sought and the relevant public authority.",
   },
   {
     id: "rti-section-7-timeline",
     title: "RTI Act Section 7 — Disposal of request",
-    authority: "Government of India / India Code",
+    authority: "Government of India",
     authority_level: "STATUTORY",
-    source_url: "https://www.indiacode.nic.in/handle/123456789/2063",
+    source_url: "https://rti.gov.in/",
     section: "Section 7",
     last_verified: "2024-06-01",
-    tags: ["rti", "timeline", "30 days", "appeal"],
+    domains: ["rti"],
+    tags: ["rti", "timeline", "30 days", "appeal", "disposal"],
     content:
-      "Section 7 of the RTI Act provides that information shall be provided within thirty days of receipt of the request, subject to the Act. Where information concerns life or liberty, it shall be provided within forty-eight hours.",
+      "Section 7 of the RTI Act provides that information shall ordinarily be provided within thirty days of receipt of the request. Life or liberty matters must be answered within forty-eight hours.",
+  },
+  {
+    id: "rti-public-authority-2h",
+    title: "RTI Act Section 2(h) — Public authority",
+    authority: "Government of India",
+    authority_level: "STATUTORY",
+    source_url: "https://rti.gov.in/",
+    section: "Section 2(h)",
+    last_verified: "2024-06-01",
+    domains: ["rti", "bureaucracy"],
+    tags: ["rti", "public authority", "section 2(h)", "bureaucracy", "definition"],
+    content:
+      "A public authority under the RTI Act means any authority or body established under the Constitution, law, or government notification. Section 2(h) defines public authority and helps identify where to file an RTI application.",
   },
   {
     id: "consumer-protection-act",
     title: "Consumer Protection Act, 2019 — Remedies",
-    authority: "Government of India",
+    authority: "Department of Consumer Affairs",
     authority_level: "STATUTORY",
-    source_url: "https://consumeraffairs.nic.in/",
+    source_url: "https://consumerhelpline.gov.in/",
     last_verified: "2024-06-01",
-    tags: ["consumer", "refund", "warranty", "defective"],
+    domains: ["rights_navigator"],
+    tags: ["consumer", "refund", "warranty", "defective", "shop", "product"],
     content:
-      "The Consumer Protection Act, 2019 provides remedies for defective goods and deficient services through consumer commissions. Consumers may first raise a written complaint with the seller and preserve invoices and warranty documents.",
+      "The Consumer Protection Act, 2019 provides remedies for defective goods and deficient services. Consumers should first raise a written complaint with the seller, preserve invoices and warranty documents, and approach the appropriate consumer commission if unresolved.",
   },
   {
-    id: "karnataka-tenancy-overview",
-    title: "Karnataka tenancy and deposit disputes — general guidance",
-    authority: "Karnataka State portals (verify locally)",
+    id: "national-consumer-helpline",
+    title: "National Consumer Helpline",
+    authority: "Department of Consumer Affairs",
     authority_level: "OFFICIAL",
-    source_url: "https://www.karnataka.gov.in/",
-    last_verified: "2024-06-01",
-    state: "Karnataka",
-    tags: ["tenant", "landlord", "deposit", "rent", "bangalore", "bengaluru"],
+    source_url: "https://consumerhelpline.gov.in/",
+    last_verified: "2024-08-01",
+    domains: ["rights_navigator"],
+    tags: ["consumer", "helpline", "complaint", "refund", "warranty"],
     content:
-      "Landlord-tenant disputes including security deposits in Karnataka are governed by applicable rent and tenancy laws. Tenants should document the tenancy, notice period, and deposit payment before approaching the relevant rent authority or consumer forum as applicable.",
+      "The National Consumer Helpline allows consumers to register grievances about defective products and deficient services and seek guidance on consumer commission procedures.",
   },
   {
     id: "cpgrams-overview",
@@ -68,32 +88,22 @@ export const KNOWLEDGE_BASE: KnowledgeDoc[] = [
     authority_level: "OFFICIAL",
     source_url: "https://pgportal.gov.in/",
     last_verified: "2024-08-01",
-    tags: ["grievance", "complaint", "municipal", "pg portal"],
+    domains: ["grievance"],
+    tags: ["grievance", "complaint", "central government", "pg portal", "escalation"],
     content:
       "CPGRAMS is the Centralized Public Grievance Redress and Monitoring System where citizens can lodge grievances related to Central Government ministries and departments and track status online.",
   },
   {
     id: "municipal-grievance-general",
     title: "Municipal grievance redress — general guidance",
-    authority: "Urban local bodies (verify locally)",
+    authority: "Urban local bodies",
     authority_level: "OFFICIAL",
-    source_url: "https://www.india.gov.in/",
+    source_url: "https://pgportal.gov.in/",
     last_verified: "2024-06-01",
-    tags: ["municipal", "drainage", "garbage", "road", "complaint"],
+    domains: ["grievance"],
+    tags: ["municipal", "drainage", "garbage", "road", "complaint", "local body"],
     content:
-      "Urban local bodies are generally responsible for local civic services such as drainage within their jurisdiction. Citizens should lodge municipal complaints through official municipal channels and keep the complaint reference number.",
-  },
-  {
-    id: "chennai-corp-citizen",
-    title: "Greater Chennai Corporation — citizen services",
-    authority: "Greater Chennai Corporation",
-    authority_level: "OFFICIAL",
-    source_url: "https://chennaicorporation.gov.in/",
-    last_verified: "2024-06-01",
-    state: "Tamil Nadu",
-    tags: ["chennai", "municipal", "complaint", "grievance"],
-    content:
-      "For civic issues in Chennai, citizens may use Greater Chennai Corporation official citizen service channels to lodge and track complaints.",
+      "Urban local bodies are responsible for local civic services such as drainage, garbage, roads, and water within their jurisdiction. Citizens should lodge complaints through the official municipal portal or helpline and keep the complaint reference number.",
   },
   {
     id: "pm-kisan-eligibility",
@@ -102,10 +112,10 @@ export const KNOWLEDGE_BASE: KnowledgeDoc[] = [
     authority_level: "OFFICIAL",
     source_url: "https://pmkisan.gov.in/",
     last_verified: "2024-06-01",
-    state: "Tamil Nadu",
-    tags: ["pm-kisan", "scheme", "eligibility", "farmer", "farmland"],
+    domains: ["scheme_eligibility"],
+    tags: ["pm-kisan", "scheme", "eligibility", "farmer", "farmland", "agriculture"],
     content:
-      "PM-KISAN provides income support to eligible landholding farmer families. Eligibility criteria including landholding limits and exclusion categories are published on the official PM-KISAN portal. Applicants should verify criteria for their State and apply only through official channels.",
+      "PM-KISAN provides income support to eligible landholding farmer families. Eligibility criteria including landholding limits and exclusion categories are published on the official PM-KISAN portal. Apply only through official government channels.",
   },
   {
     id: "labour-wages-india",
@@ -114,42 +124,116 @@ export const KNOWLEDGE_BASE: KnowledgeDoc[] = [
     authority_level: "OFFICIAL",
     source_url: "https://labour.gov.in/",
     last_verified: "2024-06-01",
-    tags: ["employer", "salary", "wages", "workplace", "labour", "unpaid"],
+    domains: ["rights_navigator"],
+    tags: ["employer", "salary", "wages", "workplace", "labour", "unpaid", "termination"],
     content:
-      "Unpaid wages and certain employment disputes may be addressed through labour department mechanisms and industrial dispute procedures under applicable labour laws. Workers should keep employment records, pay slips, and written communications as evidence.",
+      "Unpaid wages and employment disputes may be addressed through State labour departments and labour commissioner channels. Workers should keep employment records, pay slips, and written communications as evidence.",
   },
   {
-    id: "rti-public-authority-2h",
-    title: "RTI Act Section 2(h) — Public authority",
-    authority: "Government of India / India Code",
-    authority_level: "STATUTORY",
-    source_url: "https://www.indiacode.nic.in/handle/123456789/2063",
-    section: "Section 2(h)",
+    id: "tenancy-general-india",
+    title: "Landlord-tenant and deposit disputes — general guidance",
+    authority: "State rent / tenancy laws (verify locally)",
+    authority_level: "OFFICIAL",
+    source_url: "https://labour.gov.in/",
     last_verified: "2024-06-01",
-    tags: ["rti", "public authority", "section 2(h)", "bureaucracy"],
+    domains: ["rights_navigator"],
+    tags: ["tenant", "landlord", "deposit", "rent", "lease", "eviction", "security"],
     content:
-      "Under the RTI Act, a public authority means any authority or body established or constituted by or under the Constitution, law, or government notification. Section 2(h) defines public authority and is key to knowing where an RTI application can be filed.",
+      "Landlord-tenant disputes including security deposits are governed by applicable State rent and tenancy laws. Tenants should document the tenancy agreement, notice period, and deposit payment before approaching the relevant rent authority or consumer forum.",
   },
 ];
 
-export function searchKnowledge(query: string, state?: string, topK = 5): KnowledgeDoc[] {
+function cityDocs(): KnowledgeDoc[] {
+  return CITY_DIRECTORY.map((entry) => ({
+    id: `municipal-${entry.city.toLowerCase().replace(/\s+/g, "-")}`,
+    title: `${entry.localAuthority} — citizen services`,
+    authority: entry.localAuthority,
+    authority_level: "OFFICIAL",
+    source_url: entry.portalUrl || statePortalUrl(entry.state) || "https://pgportal.gov.in/",
+    last_verified: "2024-06-01",
+    state: entry.state,
+    city: entry.city,
+    domains: ["grievance", "rti", "form_filler"],
+    tags: [
+      entry.city.toLowerCase(),
+      entry.state.toLowerCase(),
+      "municipal",
+      "complaint",
+      "grievance",
+      "local body",
+      ...(entry.aliases || []),
+    ],
+    content: `For civic issues in ${entry.city}, ${entry.state}, citizens may lodge and track complaints through ${entry.localAuthority} official channels or the applicable State municipal portal.`,
+  }));
+}
+
+export const KNOWLEDGE_BASE: KnowledgeDoc[] = [...CORE_DOCS, ...cityDocs()];
+
+const DOMAIN_TAGS: Record<string, string[]> = {
+  rti: ["rti", "information", "public authority", "records", "application"],
+  grievance: ["grievance", "municipal", "complaint", "drainage", "garbage", "road", "local body"],
+  rights_navigator: ["consumer", "tenant", "landlord", "employer", "salary", "wages", "refund", "deposit"],
+  scheme_eligibility: ["scheme", "pm-kisan", "eligibility", "farmer", "agriculture"],
+  form_filler: ["rti", "application", "form", "records"],
+  bureaucracy: ["public authority", "section 2(h)", "bureaucracy", "rti", "definition"],
+};
+
+const RIGHTS_AREA_TAGS: Record<string, string[]> = {
+  tenant: ["tenant", "landlord", "deposit", "rent", "lease"],
+  consumer: ["consumer", "refund", "warranty", "defective", "shop"],
+  workplace: ["employer", "salary", "wages", "labour", "workplace"],
+};
+
+export function searchKnowledge(
+  query: string,
+  options?: {
+    state?: string;
+    city?: string;
+    domain?: string;
+    area?: string;
+    topK?: number;
+  }
+): KnowledgeDoc[] {
+  const topK = options?.topK ?? 5;
   const q = query.toLowerCase();
-  const tokens = q.split(/\s+/).filter((t) => t.length > 3);
+  const tokens = q.split(/\s+/).filter((t) => t.length > 2);
+  const domain = options?.domain || "";
+  const area = options?.area || "";
+  const domainTags = DOMAIN_TAGS[domain] || [];
+  const areaTags = RIGHTS_AREA_TAGS[area] || [];
 
   const scored = KNOWLEDGE_BASE.map((doc) => {
-    const hay = `${doc.title} ${doc.content} ${doc.tags.join(" ")}`.toLowerCase();
+    const hay = `${doc.title} ${doc.content} ${doc.tags.join(" ")} ${doc.city || ""} ${doc.state || ""}`.toLowerCase();
     let score = 0;
+
     for (const t of tokens) {
       if (hay.includes(t)) score += 1;
     }
-    if (state && doc.state && doc.state.toLowerCase() === state.toLowerCase()) score += 2;
+
+    if (domain && doc.domains.includes(domain)) score += 4;
+    for (const tag of domainTags) {
+      if (doc.tags.includes(tag) || hay.includes(tag)) score += 2;
+    }
+    for (const tag of areaTags) {
+      if (doc.tags.includes(tag) || hay.includes(tag)) score += 3;
+    }
+
+    if (options?.state && doc.state?.toLowerCase() === options.state.toLowerCase()) score += 3;
+    if (options?.city && doc.city?.toLowerCase() === options.city.toLowerCase()) score += 5;
+
     return { doc, score };
   })
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score);
 
   if (scored.length === 0) {
-    return KNOWLEDGE_BASE.slice(0, Math.min(topK, KNOWLEDGE_BASE.length));
+    const fallback = KNOWLEDGE_BASE.filter((d) => !domain || d.domains.includes(domain));
+    return fallback.slice(0, topK);
   }
+
   return scored.slice(0, topK).map((x) => x.doc);
+}
+
+export function isValidOfficialUrl(url: string): boolean {
+  return /^https:\/\/[a-z0-9.-]+\.[a-z]{2,}/i.test(url);
 }

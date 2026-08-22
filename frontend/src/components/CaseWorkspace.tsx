@@ -76,20 +76,20 @@ export function CaseWorkspace({
 
   return (
     <div className="min-h-[100dvh] bg-[linear-gradient(180deg,#f7f4ef_0%,#eef3f1_40%,#f8faf9_100%)]">
-      <header className="border-b border-stone-200/80 bg-white/70 backdrop-blur">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="min-w-0">
-            <p className="font-display text-lg font-semibold text-teal-900 sm:text-xl">
+      <header className="sticky top-0 z-10 border-b border-stone-200/80 bg-white/70 backdrop-blur">
+        <div className="flex items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 lg:px-8">
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-base font-semibold text-teal-900 sm:text-xl">
               {t.appName}
             </p>
-            <p className="truncate text-xs text-stone-500">
+            <p className="truncate text-[11px] text-stone-500 sm:text-xs">
               {domainLabel(response.domain, t.domainLabels)} · {t.caseLabel} {caseId.slice(0, 8)}
             </p>
           </div>
           <button
             type="button"
             onClick={onStartNew}
-            className="shrink-0 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 hover:bg-stone-50"
+            className="shrink-0 rounded-md border border-stone-300 bg-white px-2.5 py-2 text-xs text-stone-700 hover:bg-stone-50 sm:px-3 sm:text-sm"
           >
             {t.newCase}
           </button>
@@ -122,7 +122,10 @@ export function CaseWorkspace({
               {response.message || t.needMoreInfo}
             </p>
             {response.pending_question && (
-              <p className="mt-4 font-medium text-stone-900">{response.pending_question}</p>
+              <div className="mt-4 rounded-md border border-teal-100 bg-teal-50/60 px-4 py-3">
+                <p className="font-medium text-stone-900">{response.pending_question}</p>
+                <p className="mt-1 text-sm text-stone-600">{t.replyPlaceholder}</p>
+              </div>
             )}
             <form onSubmit={handleReply} className="mt-6">
               <label htmlFor="reply" className="sr-only">
@@ -267,7 +270,7 @@ export function CaseWorkspace({
                     {generatedDocument.placeholders_used.join(", ")}
                   </p>
                 )}
-                <pre className="mt-4 max-h-[28rem] overflow-auto whitespace-pre-wrap rounded-md bg-stone-50 p-4 font-sans text-sm leading-relaxed text-stone-800">
+                <pre className="mt-4 max-h-[min(28rem,60vh)] overflow-auto whitespace-pre-wrap rounded-md bg-stone-50 p-3 font-sans text-xs leading-relaxed text-stone-800 sm:p-4 sm:text-sm">
                   {generatedDocument.body}
                 </pre>
               </section>
