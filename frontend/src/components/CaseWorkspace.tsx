@@ -10,6 +10,7 @@ import { downloadDocument } from "@/lib/downloadDocument";
 import type { ChatMessage, GeneratedDocument, StructuredCaseResponse } from "@/lib/types";
 import { ApplicantDetailsForm } from "@/components/ApplicantDetailsForm";
 import { ChatHistory } from "@/components/ChatHistory";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface CaseWorkspaceProps {
   caseId: string;
@@ -28,16 +29,8 @@ interface CaseWorkspaceProps {
   draftLoading: boolean;
 }
 
-function domainLabel(domain?: string | null) {
-  const labels: Record<string, string> = {
-    rti: "RTI drafting",
-    grievance: "Municipal service complaint",
-    rights_navigator: "Rights navigator",
-    scheme_eligibility: "Scheme eligibility",
-    form_filler: "Conversational form-filler",
-    bureaucracy: "Bureaucracy translator",
-  };
-  return labels[domain || ""] || "Civic case";
+function domainLabel(domain: string | null | undefined, labels: Record<string, string>) {
+  return labels[domain || ""] || labels.other;
 }
 
 export function CaseWorkspace({
@@ -56,6 +49,7 @@ export function CaseWorkspace({
   onStartNew,
   draftLoading,
 }: CaseWorkspaceProps) {
+  const { t } = useLanguage();
   const [reply, setReply] = useState("");
   const [showDetailsErrors, setShowDetailsErrors] = useState(false);
   const collecting = response.status === "collecting";
@@ -86,10 +80,10 @@ export function CaseWorkspace({
         <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="min-w-0">
             <p className="font-display text-lg font-semibold text-teal-900 sm:text-xl">
-              CivicAI
+              {t.appName}
             </p>
             <p className="truncate text-xs text-stone-500">
-              {domainLabel(response.domain)} · Case {caseId.slice(0, 8)}
+              {domainLabel(response.domain, t.domainLabels)} · {t.caseLabel} {caseId.slice(0, 8)}
             </p>
           </div>
           <button
@@ -97,7 +91,7 @@ export function CaseWorkspace({
             onClick={onStartNew}
             className="shrink-0 rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 hover:bg-stone-50"
           >
-            New case
+            {t.newCase}
           </button>
         </div>
       </header>
@@ -105,11 +99,11 @@ export function CaseWorkspace({
       <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <ChatHistory messages={messages} loading={loading} />
 
-        {loading && messages.length > 0 && <p className="sr-only">Loading response</p>}
+        {loading && messages.length > 0 && <p className="sr-only">{t.loadingResponse}</p>}
 
         {loading && messages.length === 0 && (
           <p className="mt-6 animate-pulse text-sm text-teal-800">
-            {response.message || "Checking official sources..."}
+            {response.message || t.checkingSources}
           </p>
         )}
 
@@ -125,22 +119,21 @@ export function CaseWorkspace({
         {collecting && !loading && (
           <section className="mt-6">
             <p className="whitespace-pre-line text-base leading-relaxed text-stone-700">
-              {response.message ||
-                "CivicAI needs a little more information to understand your situation."}
+              {response.message || t.needMoreInfo}
             </p>
             {response.pending_question && (
               <p className="mt-4 font-medium text-stone-900">{response.pending_question}</p>
             )}
             <form onSubmit={handleReply} className="mt-6">
               <label htmlFor="reply" className="sr-only">
-                Your answer
+                {t.yourAnswer}
               </label>
               <textarea
                 id="reply"
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
                 rows={3}
-                placeholder="Type your answer..."
+                placeholder={t.replyPlaceholder}
                 className="w-full rounded-md border border-stone-300 bg-white/90 px-4 py-3 text-base outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-700/20"
                 disabled={loading}
               />
@@ -150,7 +143,7 @@ export function CaseWorkspace({
                   disabled={loading || !reply.trim()}
                   className="min-h-12 rounded-md bg-teal-800 px-5 text-white hover:bg-teal-900 disabled:opacity-50"
                 >
-                  Continue
+                  {t.continue}
                 </button>
               </div>
             </form>
@@ -160,16 +153,15 @@ export function CaseWorkspace({
         {response.status === "ready" && !loading && (
           <div className="mt-6 space-y-8 pb-8">
             <section>
-              <h2 className="font-display text-xl text-stone-900">Your situation</h2>
+              <h2 className="font-display text-xl text-stone-900">{t.yourSituation}</h2>
               <p className="mt-3 text-base leading-relaxed text-stone-700">{response.summary}</p>
             </section>
 
             <section>
-              <h2 className="font-display text-xl text-stone-900">What official sources say</h2>
+              <h2 className="font-display text-xl text-stone-900">{t.officialSourcesSay}</h2>
               {response.supported_information.length === 0 ? (
                 <p className="mt-3 text-stone-600">
-                  {response.uncertainties[0] ||
-                    "I couldn't find enough authoritative information to answer this reliably."}
+                  {response.uncertainties[0] || t.insufficientInfo}
                 </p>
               ) : (
                 <ul className="mt-3 space-y-3">
@@ -183,7 +175,7 @@ export function CaseWorkspace({
             </section>
 
             <section>
-              <h2 className="font-display text-xl text-stone-900">What you can do</h2>
+              <h2 className="font-display text-xl text-stone-900">{t.whatYouCanDo}</h2>
               <ol className="mt-3 list-decimal space-y-3 pl-5 text-base leading-relaxed text-stone-700">
                 {response.recommended_actions.map((a) => (
                   <li key={a}>{a}</li>
@@ -195,13 +187,8 @@ export function CaseWorkspace({
               id="applicant-details"
               className="rounded-md border border-stone-200 bg-white p-4 sm:p-5"
             >
-              <h2 className="font-display text-lg text-stone-900 sm:text-xl">
-                Your details for the document
-              </h2>
-              <p className="mt-2 text-sm text-stone-600">
-                Fill in your information below. CivicAI will insert these details into the
-                generated form or draft.
-              </p>
+              <h2 className="font-display text-lg text-stone-900 sm:text-xl">{t.yourDetails}</h2>
+              <p className="mt-2 text-sm text-stone-600">{t.detailsHelp}</p>
               <div className="mt-4">
                 <ApplicantDetailsForm
                   details={applicantDetails}
@@ -212,7 +199,7 @@ export function CaseWorkspace({
             </section>
 
             <section className="rounded-md border border-stone-200 bg-[#f7f4ef]/95 p-4 sm:p-5">
-              <h2 className="font-display text-lg text-stone-900">Generate a document</h2>
+              <h2 className="font-display text-lg text-stone-900">{t.generateDocument}</h2>
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 {(response.domain === "grievance" || !response.domain) && (
                   <button
@@ -221,7 +208,7 @@ export function CaseWorkspace({
                     onClick={() => runDraft(onGenerateComplaint)}
                     className="min-h-12 flex-1 rounded-md bg-teal-800 px-4 text-sm text-white hover:bg-teal-900 disabled:opacity-50 sm:min-w-[12rem]"
                   >
-                    {draftLoading ? "Preparing draft..." : "Generate Complaint"}
+                    {draftLoading ? t.preparingDraft : t.generateComplaint}
                   </button>
                 )}
                 {response.domain === "rti" && (
@@ -231,7 +218,7 @@ export function CaseWorkspace({
                     onClick={() => runDraft(onGenerateRti)}
                     className="min-h-12 flex-1 rounded-md bg-teal-800 px-4 text-sm text-white hover:bg-teal-900 disabled:opacity-50"
                   >
-                    Generate RTI Draft
+                    {t.generateRti}
                   </button>
                 )}
                 {response.domain === "form_filler" && (
@@ -242,7 +229,7 @@ export function CaseWorkspace({
                       onClick={() => runDraft(onGenerateForm)}
                       className="min-h-12 flex-1 rounded-md bg-teal-800 px-4 text-sm text-white hover:bg-teal-900 disabled:opacity-50"
                     >
-                      Generate Pre-filled Form
+                      {t.generateForm}
                     </button>
                     <button
                       type="button"
@@ -250,7 +237,7 @@ export function CaseWorkspace({
                       onClick={() => runDraft(onGenerateRti)}
                       className="min-h-12 flex-1 rounded-md border border-teal-800 px-4 text-sm text-teal-900 hover:bg-teal-50 disabled:opacity-50"
                     >
-                      Generate RTI Draft
+                      {t.generateRti}
                     </button>
                   </>
                 )}
@@ -268,7 +255,7 @@ export function CaseWorkspace({
                     onClick={() => downloadDocument(generatedDocument)}
                     className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-teal-800 px-4 text-sm font-medium text-teal-900 hover:bg-teal-50"
                   >
-                    Download .txt
+                    {t.downloadTxt}
                   </button>
                 </div>
                 <h3 className="mt-3 font-display text-xl text-stone-900">
@@ -276,8 +263,8 @@ export function CaseWorkspace({
                 </h3>
                 {generatedDocument.placeholders_used.length > 0 && (
                   <p className="mt-2 text-sm text-amber-800">
-                    Some placeholders remain — update your details above and regenerate if
-                    needed: {generatedDocument.placeholders_used.join(", ")}
+                    {t.placeholdersRemain}{" "}
+                    {generatedDocument.placeholders_used.join(", ")}
                   </p>
                 )}
                 <pre className="mt-4 max-h-[28rem] overflow-auto whitespace-pre-wrap rounded-md bg-stone-50 p-4 font-sans text-sm leading-relaxed text-stone-800">
@@ -287,7 +274,7 @@ export function CaseWorkspace({
             )}
 
             <section>
-              <h2 className="font-display text-xl text-stone-900">Official sources</h2>
+              <h2 className="font-display text-xl text-stone-900">{t.officialSources}</h2>
               <div className="mt-4 space-y-4">
                 {response.citations.map((c) => (
                   <article
@@ -296,10 +283,10 @@ export function CaseWorkspace({
                   >
                     <p className="text-xs font-semibold uppercase tracking-wide text-teal-800">
                       {c.authority_level === "STATUTORY"
-                        ? "Statutory source"
+                        ? t.statutorySource
                         : c.authority_level === "OFFICIAL"
-                          ? "Official source"
-                          : "Trusted source"}
+                          ? t.officialSource
+                          : t.trustedSource}
                     </p>
                     <h3 className="mt-1 text-base font-medium text-stone-900">{c.title}</h3>
                     {c.source_url && (
@@ -309,7 +296,7 @@ export function CaseWorkspace({
                         rel="noopener noreferrer"
                         className="mt-3 inline-flex min-h-10 items-center text-sm font-medium text-teal-800 underline underline-offset-2"
                       >
-                        Open official source
+                        {t.openSource}
                       </a>
                     )}
                   </article>
@@ -322,15 +309,14 @@ export function CaseWorkspace({
         {response.status === "error" && !loading && (
           <section className="mt-8">
             <p className="text-base text-stone-700">
-              {response.message ||
-                "I couldn't find enough authoritative information to answer this reliably."}
+              {response.message || t.insufficientInfo}
             </p>
             <button
               type="button"
               onClick={onStartNew}
               className="mt-6 min-h-12 rounded-md bg-teal-800 px-5 text-white"
             >
-              Start New Case
+              {t.startNewCase}
             </button>
           </section>
         )}

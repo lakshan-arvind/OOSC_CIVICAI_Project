@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, warmBackend } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   addCaseToHistory,
   CASE_STORAGE_KEY,
@@ -17,7 +18,19 @@ import { AppShell } from "@/components/AppShell";
 import { HomeHero } from "@/components/HomeHero";
 import { CaseWorkspace } from "@/components/CaseWorkspace";
 
+import type { TranslationKeys } from "@/lib/i18n/translations";
+
+function localizeApiError(err: unknown, t: TranslationKeys): string {
+  if (!(err instanceof Error)) return t.unavailable;
+  const msg = err.message;
+  if (msg.includes("timed out")) return t.timeoutError;
+  if (msg.includes("Could not reach CivicAI")) return t.connectionError;
+  if (msg === "CivicAI is temporarily unavailable. Please try again.") return t.unavailable;
+  return msg;
+}
+
 export default function HomePage() {
+  const { locale, t } = useLanguage();
   const [caseId, setCaseId] = useState<string | null>(null);
   const [response, setResponse] = useState<StructuredCaseResponse | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -77,16 +90,12 @@ export default function HomePage() {
         addCaseToHistory(id);
         bumpHistory();
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "CivicAI is temporarily unavailable. Please try again."
-        );
+        setError(localizeApiError(err, t));
       } finally {
         setLoading(false);
       }
     },
-    [bumpHistory]
+    [bumpHistory, t]
   );
 
   const startCase = useCallback(
@@ -96,7 +105,7 @@ export default function HomePage() {
       setDocument(null);
       setApplicantDetails(EMPTY_APPLICANT_DETAILS);
       try {
-        const data = await api.createCase(query);
+        const data = await api.createCase(query, locale);
         setCaseId(data.case_id);
         setResponse(data.response);
         setMessages(data.messages || []);
@@ -107,16 +116,12 @@ export default function HomePage() {
         addCaseToHistory(data.case_id);
         bumpHistory();
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "CivicAI is temporarily unavailable. Please try again."
-        );
+        setError(localizeApiError(err, t));
       } finally {
         setLoading(false);
       }
     },
-    [bumpHistory]
+    [bumpHistory, locale, t]
   );
 
   const sendReply = useCallback(
@@ -125,7 +130,7 @@ export default function HomePage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await api.sendMessage(caseId, message);
+        const data = await api.sendMessage(caseId, message, locale);
         setResponse(data.response);
         setMessages(data.messages || []);
         setApplicantDetails((prev) => {
@@ -146,16 +151,12 @@ export default function HomePage() {
         addCaseToHistory(caseId);
         bumpHistory();
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "CivicAI is temporarily unavailable. Please try again."
-        );
+        setError(localizeApiError(err, t));
       } finally {
         setLoading(false);
       }
     },
-    [caseId, bumpHistory]
+    [caseId, bumpHistory, locale, t]
   );
 
   const generateComplaint = useCallback(
@@ -164,15 +165,15 @@ export default function HomePage() {
       setDraftLoading(true);
       setError(null);
       try {
-        const data = await api.draftGrievance(caseId, extra);
+        const data = await api.draftGrievance(caseId, extra, locale);
         setDocument(data.document);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not generate draft.");
+        setError(localizeApiError(err, t));
       } finally {
         setDraftLoading(false);
       }
     },
-    [caseId]
+    [caseId, locale, t]
   );
 
   const generateRti = useCallback(
@@ -181,15 +182,15 @@ export default function HomePage() {
       setDraftLoading(true);
       setError(null);
       try {
-        const data = await api.draftRti(caseId, extra);
+        const data = await api.draftRti(caseId, extra, locale);
         setDocument(data.document);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not generate draft.");
+        setError(localizeApiError(err, t));
       } finally {
         setDraftLoading(false);
       }
     },
-    [caseId]
+    [caseId, locale, t]
   );
 
   const generateForm = useCallback(
@@ -198,15 +199,15 @@ export default function HomePage() {
       setDraftLoading(true);
       setError(null);
       try {
-        const data = await api.draftForm(caseId, extra);
+        const data = await api.draftForm(caseId, extra, locale);
         setDocument(data.document);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not generate draft.");
+        setError(localizeApiError(err, t));
       } finally {
         setDraftLoading(false);
       }
     },
-    [caseId]
+    [caseId, locale, t]
   );
 
   const startNew = useCallback(() => {

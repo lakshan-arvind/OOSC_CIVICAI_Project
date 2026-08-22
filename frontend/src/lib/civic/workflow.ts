@@ -1,10 +1,13 @@
+import type { Locale } from "../i18n/types";
+import {
+  clarificationQuestion,
+  localizedActions,
+  localizedClaims,
+  localizedMessages,
+  localizedSummary,
+} from "../i18n/workflowContent";
 import type { EvidenceLevel, StructuredCaseResponse } from "../types";
 import {
-  actionPlan,
-  buildSummary,
-  candidateClaims,
-  clarificationNeeded,
-  DOMAIN_LABELS,
   factsList,
   heuristicDomain,
   heuristicFacts,
@@ -18,7 +21,7 @@ export interface WorkflowState {
   user_query: string;
   latest_user_message: string;
   domain?: string;
-  language: string;
+  language: Locale;
   jurisdiction: Record<string, unknown>;
   facts: Record<string, unknown>;
   missing_information: string[];
@@ -43,7 +46,7 @@ function filterSupported(
   const evidenceText = evidence.map((e) => String(e.content || "")).join(" ").toLowerCase();
   const out: Array<{ text: string; citation_ids: string[] }> = [];
   for (const claim of texts) {
-    const tokens = claim.toLowerCase().split(/\s+/).filter((t) => t.length > 4);
+    const tokens = claim.toLowerCase().split(/\s+/).filter((t) => t.length > 3);
     const hits = tokens.filter((t) => evidenceText.includes(t)).length;
     const supported = tokens.length === 0 || hits >= Math.max(1, Math.floor(tokens.length / 4));
     if (!supported) continue;
@@ -73,15 +76,43 @@ function mergeJurisdiction(base: Record<string, unknown>, incoming: Record<strin
   return out;
 }
 
+function needsClarification(
+  domain: string,
+  jurisdiction: Record<string, unknown>,
+  facts: Record<string, unknown>
+): { awaiting: boolean; missing: string[] } {
+  const jur = jurisdiction || {};
+  if (domain === "bureaucracy") return { awaiting: false, missing: [] };
+  if (["scheme_eligibility", "rights_navigator", "rti"].includes(domain)) {
+    if (!jur.state) return { awaiting: true, missing: ["state"] };
+    return { awaiting: false, missing: [] };
+  }
+  if (domain === "form_filler") {
+    const missing: string[] = [];
+    if (!jur.state) missing.push("state");
+    if (!jur.city) missing.push("city");
+    if (missing.length) return { awaiting: true, missing };
+    if (!facts.form_type) return { awaiting: true, missing: ["form_type"] };
+    return { awaiting: false, missing: [] };
+  }
+  const missing: string[] = [];
+  if (!jur.state) missing.push("state");
+  if (!jur.city) missing.push("city");
+  return { awaiting: missing.length > 0, missing };
+}
+
 export function runWorkflow(input: {
   caseId: string;
   userQuery: string;
   latestMessage: string;
+  language?: Locale;
   prior?: Partial<WorkflowState>;
 }): WorkflowState {
   const prior = input.prior || {};
+  const language: Locale = input.language || prior.language || "en";
   const userQuery = input.userQuery || prior.user_query || input.latestMessage;
   const latest = input.latestMessage;
+  const msgs = localizedMessages(language);
 
   const domain = prior.domain || heuristicDomain(userQuery);
   let jurisdiction = mergeJurisdiction(prior.jurisdiction || {}, parseJurisdiction(userQuery));
@@ -92,25 +123,26 @@ export function runWorkflow(input: {
 
   if (prior.awaiting_clarification && prior.pending_question) {
     const pq = String(prior.pending_question).toLowerCase();
-    if (pq.includes("city") || pq.includes("state")) {
+    if (pq.includes("city") || pq.includes("state") || pq.includes("शहर") || pq.includes("நகர")) {
       jurisdiction = mergeJurisdiction(jurisdiction, parseJurisdiction(latest));
       if (jurisdiction.city) facts.city = jurisdiction.city;
       if (jurisdiction.state) facts.state = jurisdiction.state;
     }
   }
 
-  const clar = clarificationNeeded(domain, jurisdiction, facts);
+  const clar = needsClarification(domain, jurisdiction, facts);
   if (clar.awaiting) {
+    const question = clarificationQuestion(domain, clar.missing, language);
     return {
       case_id: input.caseId,
       user_query: userQuery,
       latest_user_message: latest,
       domain,
-      language: "en",
+      language,
       jurisdiction,
       facts,
       missing_information: clar.missing,
-      pending_question: clar.question,
+      pending_question: question,
       awaiting_clarification: true,
       evidence: [],
       action_plan: [],
@@ -120,8 +152,8 @@ export function runWorkflow(input: {
       citations: [],
       evidence_level: "insufficient",
       status: "collecting",
-      message: `CivicAI needs a little more information to understand your situation.\n\n${clar.question}`,
-      summary: DOMAIN_LABELS[domain] || "Civic query",
+      message: `${msgs.needMoreInfo}\n\n${question}`,
+      summary: msgs.domainLabel(domain),
     };
   }
 
@@ -136,6 +168,7 @@ export function runWorkflow(input: {
     }
   }
 
+  const area = String(facts.rights_area || "general");
   const q = searchQuery(domain, facts, jurisdiction, userQuery);
   const docs = searchKnowledge(q, jurisdiction.state as string | undefined, 6);
   const evidence = docs.map((d) => ({
@@ -154,13 +187,17 @@ export function runWorkflow(input: {
   const level = evidenceLevel(evidence);
   const uncertainties: string[] = [];
   if (level === "insufficient") {
-    uncertainties.push("I couldn't find enough authoritative information to answer this reliably.");
+    uncertainties.push(msgs.insufficientInfo);
   }
 
-  const claims = candidateClaims(domain, facts, jurisdiction);
+  const claims = localizedClaims(domain, area, jurisdiction.city as string | undefined, language);
   const supported = filterSupported(claims, evidence);
-  const summary = buildSummary(domain, facts, jurisdiction);
-  const { actions, documents } = level === "insufficient" ? { actions: [], documents: [] } : actionPlan(domain, facts, jurisdiction);
+  const summary = localizedSummary(domain, facts, jurisdiction, language);
+  const authority = String(jurisdiction.local_authority || "your municipal / local body");
+  const { actions, documents } =
+    level === "insufficient"
+      ? { actions: [], documents: [] }
+      : localizedActions(domain, area, authority, language);
 
   const citations = evidence.map((e, idx) => ({
     source_id: String(e.id || `src-${idx + 1}`),
@@ -183,7 +220,7 @@ export function runWorkflow(input: {
     user_query: userQuery,
     latest_user_message: latest,
     domain,
-    language: "en",
+    language,
     jurisdiction,
     facts,
     missing_information: [],
@@ -197,10 +234,7 @@ export function runWorkflow(input: {
     citations,
     evidence_level: level,
     status: level === "insufficient" ? "error" : "ready",
-    message:
-      level === "insufficient"
-        ? "I couldn't find enough authoritative information to answer this reliably. Please share more detail or try again."
-        : "Here is what CivicAI found based on official sources.",
+    message: level === "insufficient" ? msgs.insufficientInfo : msgs.foundFromSources,
     summary,
   };
 }

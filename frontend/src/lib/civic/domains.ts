@@ -12,29 +12,58 @@ export const DOMAIN_LABELS: Record<string, string> = {
 
 export function detectRightsArea(text: string): string {
   const lower = text.toLowerCase();
-  if (/(landlord|tenant|rent|lease|security deposit|eviction)/.test(lower)) return "tenant";
-  if (/(employer|salary|workplace|wages|labour|labor|termination|fired)/.test(lower))
+  if (
+    /(landlord|tenant|rent|lease|security deposit|eviction|किरायेदार|मकान मालिक|जमा|वாடகை|வீட்டு உரிமையாளர்|வாடகை|வைப்புத்தொகை)/.test(
+      lower
+    )
+  )
+    return "tenant";
+  if (
+    /(employer|salary|workplace|wages|labour|labor|termination|fired|नियोक्ता|वेतन|श्रम|முதலாளி|சம்பளம்|தொழிலாளர்)/.test(
+      lower
+    )
+  )
     return "workplace";
-  if (/(consumer|warranty|refund|defective|shop|seller|product)/.test(lower)) return "consumer";
+  if (
+    /(consumer|warranty|refund|defective|shop|seller|product|उपभोक्ता|वारंटी|रिफंड|நுகர்வோர்|உத்தரவாதம்|பணத்திரும்ப)/.test(
+      lower
+    )
+  )
+    return "consumer";
   return "general";
 }
 
 export function heuristicDomain(text: string): string {
   const lower = text.toLowerCase();
   if (
-    /(what does|mean in simple|plain language|plain words|simple words|explain this|bureaucracy|section 2\(h\)|translate this|in simple terms)/.test(
+    /(what does|mean in simple|plain language|plain words|simple words|explain this|bureaucracy|section 2\(h\)|translate this|in simple terms|सरल भाषा|सरल शब्द|எளிய வார்த்தை|எளிய மொழி)/.test(
       lower
     )
   )
     return "bureaucracy";
-  if (/(fill the form|fill out|application form|help me fill|auto-populate|form-filler|prefill|pre-fill)/.test(lower))
+  if (
+    /(fill the form|fill out|application form|help me fill|auto-populate|form-filler|prefill|pre-fill|फॉर्म भर|पत्र भर|படிவம் நிரப்ப|படிவம் தயார)/.test(
+      lower
+    )
+  )
     return "form_filler";
-  if (/(eligible|eligibility|am i eligible|can i get|pm-kisan|pm kisan|ayushman|mgnrega|pension scheme|government scheme)/.test(lower))
+  if (
+    /(eligible|eligibility|am i eligible|can i get|pm-kisan|pm kisan|ayushman|mgnrega|pension scheme|government scheme|पात्र|योजना|தகுதி|திட்டம்)/.test(
+      lower
+    )
+  )
     return "scheme_eligibility";
-  if (/(landlord|tenant|security deposit|eviction|consumer forum|warranty|refund|defective|employer|salary|workplace|wrongful termination|not paid my salary)/.test(lower))
+  if (
+    /(landlord|tenant|security deposit|eviction|consumer forum|warranty|refund|defective|employer|salary|workplace|wrongful termination|not paid my salary|किरायेदार|उपभोक्ता|वेतन|வாடகை|வீட்டு உரிமையாளர்|வைப்புத்தொகை|நுகர்வோர்|சம்பளம்)/.test(
+      lower
+    )
+  )
     return "rights_navigator";
-  if (/rti|right to information/.test(lower)) return "rti";
-  if (/(how much|spent|expenditure)/.test(lower) && /(municipality|municipal|road|government|department)/.test(lower))
+  if (/rti|right to information|आरटीआई|ஆர்டிஐ|தகவல் அறியும்/.test(lower)) return "rti";
+  if (
+    /(how much|spent|expenditure|खर्च|செலவு)/.test(lower) &&
+    /(municipality|municipal|road|government|department|नगरपालिका|நகராட்சி)/.test(lower)
+  )
     return "rti";
   return "grievance";
 }
@@ -115,7 +144,7 @@ export function parseJurisdiction(text: string): Record<string, string> {
 export function heuristicFacts(text: string, existing: Record<string, unknown> = {}): Record<string, unknown> {
   const facts = { ...existing };
   const lower = text.toLowerCase();
-  if (/drainage|drain/.test(lower)) facts.issue_type = "drainage";
+  if (/drainage|drain|जल निकासी|வடிகால்/.test(lower)) facts.issue_type = "drainage";
   else if (/garbage|waste/.test(lower)) facts.issue_type = "garbage";
   else if (/streetlight|street light/.test(lower)) facts.issue_type = "streetlight";
   else if (/water/.test(lower)) facts.issue_type = "water supply";

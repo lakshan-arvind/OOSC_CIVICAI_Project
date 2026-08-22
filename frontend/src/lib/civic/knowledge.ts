@@ -96,6 +96,29 @@ export const KNOWLEDGE_BASE: KnowledgeDoc[] = [
       "For civic issues in Chennai, citizens may use Greater Chennai Corporation official citizen service channels to lodge and track complaints.",
   },
   {
+    id: "pm-kisan-eligibility",
+    title: "PM-KISAN — eligibility overview",
+    authority: "Ministry of Agriculture & Farmers Welfare",
+    authority_level: "OFFICIAL",
+    source_url: "https://pmkisan.gov.in/",
+    last_verified: "2024-06-01",
+    state: "Tamil Nadu",
+    tags: ["pm-kisan", "scheme", "eligibility", "farmer", "farmland"],
+    content:
+      "PM-KISAN provides income support to eligible landholding farmer families. Eligibility criteria including landholding limits and exclusion categories are published on the official PM-KISAN portal. Applicants should verify criteria for their State and apply only through official channels.",
+  },
+  {
+    id: "labour-wages-india",
+    title: "Unpaid wages — labour department redress",
+    authority: "Ministry of Labour & Employment",
+    authority_level: "OFFICIAL",
+    source_url: "https://labour.gov.in/",
+    last_verified: "2024-06-01",
+    tags: ["employer", "salary", "wages", "workplace", "labour", "unpaid"],
+    content:
+      "Unpaid wages and certain employment disputes may be addressed through labour department mechanisms and industrial dispute procedures under applicable labour laws. Workers should keep employment records, pay slips, and written communications as evidence.",
+  },
+  {
     id: "rti-public-authority-2h",
     title: "RTI Act Section 2(h) — Public authority",
     authority: "Government of India / India Code",

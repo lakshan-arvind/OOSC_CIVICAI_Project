@@ -1,6 +1,7 @@
 "use client";
 
 import type { ApplicantDetails } from "@/lib/applicantDetails";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface ApplicantDetailsFormProps {
   details: ApplicantDetails;
@@ -13,6 +14,8 @@ export function ApplicantDetailsForm({
   onChange,
   showErrors = false,
 }: ApplicantDetailsFormProps) {
+  const { t } = useLanguage();
+
   function field(
     id: keyof ApplicantDetails,
     label: string,
@@ -38,7 +41,7 @@ export function ApplicantDetailsForm({
           }`}
         />
         {showErrors && empty && (
-          <p className="mt-1 text-xs text-red-600">This field is required.</p>
+          <p className="mt-1 text-xs text-red-600">{t.fieldRequired}</p>
         )}
       </div>
     );
@@ -46,15 +49,15 @@ export function ApplicantDetailsForm({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <div className="sm:col-span-2">{field("applicant_name", "Full name", "Your full name")}</div>
+      <div className="sm:col-span-2">{field("applicant_name", t.fullName, t.namePlaceholder)}</div>
       <div className="sm:col-span-2">
-        {field("applicant_address", "Address", "House no., street, area, PIN")}
+        {field("applicant_address", t.address, t.addressPlaceholder)}
       </div>
-      {field("city", "City", "e.g. Chennai")}
-      {field("state", "State", "e.g. Tamil Nadu")}
-      {field("phone", "Phone", "+91 ...")}
-      {field("email", "Email", "you@example.com", true, "email")}
-      {field("date", "Date for the document", "YYYY-MM-DD", false, "date")}
+      {field("city", t.city, t.cityPlaceholder)}
+      {field("state", t.state, t.statePlaceholder)}
+      {field("phone", t.phone, t.phonePlaceholder)}
+      {field("email", t.email, t.emailPlaceholder, true, "email")}
+      {field("date", t.documentDate, t.datePlaceholder, false, "date")}
     </div>
   );
 }

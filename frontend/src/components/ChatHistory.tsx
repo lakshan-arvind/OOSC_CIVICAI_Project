@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChatMessage } from "@/lib/types";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface ChatHistoryProps {
   messages: ChatMessage[];
@@ -22,14 +23,16 @@ function formatTime(iso?: string | null) {
 }
 
 export function ChatHistory({ messages, loading }: ChatHistoryProps) {
+  const { t } = useLanguage();
+
   if (messages.length === 0 && !loading) return null;
 
   return (
     <section
       className="mt-6 rounded-md border border-stone-200 bg-white/80 p-4 sm:p-5"
-      aria-label="Conversation history"
+      aria-label={t.conversationAria}
     >
-      <h2 className="font-display text-lg text-stone-900">Conversation</h2>
+      <h2 className="font-display text-lg text-stone-900">{t.conversation}</h2>
       <ul className="mt-4 max-h-[min(50vh,420px)] space-y-4 overflow-y-auto pr-1">
         {messages.map((msg) => {
           const isUser = msg.role === "user";
@@ -46,7 +49,7 @@ export function ChatHistory({ messages, loading }: ChatHistoryProps) {
                 }`}
               >
                 <p className="text-xs font-medium opacity-80">
-                  {isUser ? "You" : "CivicAI"}
+                  {isUser ? t.you : t.civicAI}
                   {msg.created_at && (
                     <span className="ml-2 font-normal">{formatTime(msg.created_at)}</span>
                   )}
@@ -61,7 +64,7 @@ export function ChatHistory({ messages, loading }: ChatHistoryProps) {
         {loading && (
           <li className="flex justify-start">
             <div className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-teal-800 animate-pulse">
-              CivicAI is thinking...
+              {t.thinking}
             </div>
           </li>
         )}

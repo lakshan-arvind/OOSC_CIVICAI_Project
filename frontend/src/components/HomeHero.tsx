@@ -1,41 +1,19 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
+/** English queries used for workflow classification when sample cards are clicked. */
 export const WORKFLOW_EXAMPLES = [
-  {
-    label: "RTI drafting",
-    query: "I want to know how much the municipality spent repairing the road on my street last year.",
-  },
-  {
-    label: "Rights — tenant",
-    query: "My landlord is refusing to return my security deposit after I moved out in Bangalore.",
-  },
-  {
-    label: "Rights — consumer",
-    query: "I bought a defective phone and the shop is not giving a refund under warranty.",
-  },
-  {
-    label: "Rights — workplace",
-    query: "My employer has not paid my salary for two months.",
-  },
-  {
-    label: "Scheme eligibility",
-    query: "Am I eligible for PM-KISAN if I own 2 acres of farmland in rural Tamil Nadu?",
-  },
-  {
-    label: "Form-filler",
-    query: "Help me fill the RTI application form to ask about water supply complaints.",
-  },
-  {
-    label: "Bureaucracy translator",
-    query: "What does 'public authority under Section 2(h) of RTI Act' mean in simple words?",
-  },
-  {
-    label: "Municipal grievance",
-    query: "My municipality hasn't fixed my drainage complaint.",
-  },
-];
+  { key: "rti", query: "I want to know how much the municipality spent repairing the road on my street last year." },
+  { key: "tenant", query: "My landlord is refusing to return my security deposit after I moved out in Bangalore." },
+  { key: "consumer", query: "I bought a defective phone and the shop is not giving a refund under warranty." },
+  { key: "workplace", query: "My employer has not paid my salary for two months." },
+  { key: "scheme", query: "Am I eligible for PM-KISAN if I own 2 acres of farmland in rural Tamil Nadu?" },
+  { key: "form", query: "Help me fill the RTI application form to ask about water supply complaints." },
+  { key: "bureaucracy", query: "What does 'public authority under Section 2(h) of RTI Act' mean in simple words?" },
+  { key: "grievance", query: "My municipality hasn't fixed my drainage complaint." },
+] as const;
 
 interface HomeHeroProps {
   onSubmit: (query: string) => Promise<void>;
@@ -45,6 +23,7 @@ interface HomeHeroProps {
 
 export function HomeHero({ onSubmit, loading, error }: HomeHeroProps) {
   const [query, setQuery] = useState("");
+  const { t } = useLanguage();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -65,16 +44,15 @@ export function HomeHero({ onSubmit, loading, error }: HomeHeroProps) {
 
       <div className="flex w-full flex-col px-4 py-8 sm:px-6 sm:py-12 lg:px-10 lg:py-16">
         <p className="animate-fade-up font-display text-3xl font-semibold tracking-tight text-teal-900 sm:text-5xl md:text-6xl">
-          CivicAI
+          {t.appName}
         </p>
         <h1 className="animate-fade-up mt-4 max-w-2xl font-display text-2xl leading-tight text-stone-900 sm:mt-6 sm:text-4xl md:text-[2.75rem] [animation-delay:80ms]">
-          Understand your rights.
+          {t.taglineLine1}
           <br />
-          Know what to do next.
+          {t.taglineLine2}
         </h1>
         <p className="animate-fade-up mt-4 max-w-xl text-sm leading-relaxed text-stone-600 sm:mt-5 sm:text-lg [animation-delay:140ms]">
-          RTI drafting, rights guidance, scheme eligibility, form-filling, and plain-language
-          bureaucracy help — grounded in official sources.
+          {t.heroDescription}
         </p>
 
         <form
@@ -85,14 +63,14 @@ export function HomeHero({ onSubmit, loading, error }: HomeHeroProps) {
             htmlFor="problem"
             className="mb-2 block text-sm font-medium text-stone-700 sm:mb-3"
           >
-            What problem are you facing?
+            {t.problemLabel}
           </label>
           <textarea
             id="problem"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             rows={4}
-            placeholder="Describe your situation..."
+            placeholder={t.problemPlaceholder}
             className="w-full min-h-[120px] resize-y rounded-md border border-stone-300/90 bg-white/80 px-3 py-3 text-base text-stone-900 shadow-sm outline-none backdrop-blur placeholder:text-stone-400 focus:border-teal-700 focus:ring-2 focus:ring-teal-700/20 sm:px-4"
             disabled={loading}
           />
@@ -102,7 +80,7 @@ export function HomeHero({ onSubmit, loading, error }: HomeHeroProps) {
               disabled={loading || !query.trim()}
               className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-teal-800 px-6 text-base font-medium text-white transition hover:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
-              {loading ? "Understanding your situation..." : "Get Help"}
+              {loading ? t.understanding : t.getHelp}
             </button>
           </div>
         </form>
@@ -117,24 +95,24 @@ export function HomeHero({ onSubmit, loading, error }: HomeHeroProps) {
         )}
 
         <div className="animate-fade-up mt-8 pb-8 sm:mt-10 [animation-delay:280ms]">
-          <p className="text-sm font-medium text-stone-500">Try a sample workflow</p>
+          <p className="text-sm font-medium text-stone-500">{t.trySample}</p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {WORKFLOW_EXAMPLES.map((ex) => (
-              <li key={ex.label}>
+              <li key={ex.key}>
                 <button
                   type="button"
                   disabled={loading}
                   onClick={async () => {
-                    setQuery(ex.query);
+                    setQuery(t.sampleQueries[ex.key]);
                     await onSubmit(ex.query);
                   }}
                   className="flex min-h-12 w-full flex-col rounded-md border border-stone-200/80 bg-white/60 px-3 py-2.5 text-left transition hover:border-teal-200 hover:bg-white/90 active:scale-[0.99]"
                 >
                   <span className="text-xs font-semibold uppercase tracking-wide text-teal-800">
-                    {ex.label}
+                    {t.samples[ex.key]}
                   </span>
                   <span className="mt-1 line-clamp-2 text-xs text-stone-600 sm:text-sm">
-                    {ex.query}
+                    {t.sampleQueries[ex.key]}
                   </span>
                 </button>
               </li>

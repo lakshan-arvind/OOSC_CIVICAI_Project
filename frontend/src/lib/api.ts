@@ -1,3 +1,4 @@
+import type { Locale } from "./i18n/types";
 import type {
   CaseDetailResponse,
   CaseSummary,
@@ -20,10 +21,6 @@ function isProductionHost(hostname: string) {
   return hostname.endsWith(".vercel.app") || hostname.includes("vercel.app");
 }
 
-/**
- * Production on Vercel uses built-in Next.js API routes (same origin).
- * Local dev uses FastAPI on localhost:8000 unless overridden.
- */
 export function resolveApiBase(): string {
   if (typeof window !== "undefined") {
     if (isLocalHost(window.location.hostname)) {
@@ -33,11 +30,7 @@ export function resolveApiBase(): string {
       return "";
     }
   }
-
-  if (process.env.VERCEL) {
-    return "";
-  }
-
+  if (process.env.VERCEL) return "";
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || LOCAL_API;
 }
 
@@ -45,34 +38,26 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function networkErrorMessage(cause: unknown): string {
-  if (cause instanceof DOMException && cause.name === "AbortError") {
-    return "The request timed out. Please try again.";
-  }
-  return "Could not reach CivicAI. Please check your connection and try again.";
-}
-
 async function requestOnce<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const apiBase = resolveApiBase();
-
   let res: Response;
   try {
     res = await fetch(`${apiBase}${path}`, {
       ...init,
       signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init?.headers || {}),
-      },
+      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
     });
   } catch (err) {
-    throw new Error(networkErrorMessage(err));
+    const msg =
+      err instanceof DOMException && err.name === "AbortError"
+        ? "The request timed out. Please try again."
+        : "Could not reach CivicAI. Please check your connection and try again.";
+    throw new Error(msg);
   } finally {
     clearTimeout(timeout);
   }
-
   if (!res.ok) {
     let detail = "CivicAI is temporarily unavailable. Please try again.";
     try {
@@ -83,7 +68,6 @@ async function requestOnce<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new Error(detail);
   }
-
   return res.json() as Promise<T>;
 }
 
@@ -94,10 +78,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       return await requestOnce<T>(path, init);
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      if (attempt < MAX_ATTEMPTS - 1) {
-        await sleep(RETRY_DELAY_MS);
-        continue;
-      }
+      if (attempt < MAX_ATTEMPTS - 1) await sleep(RETRY_DELAY_MS);
     }
   }
   throw lastError ?? new Error("CivicAI is temporarily unavailable. Please try again.");
@@ -109,46 +90,42 @@ export const api = {
   getCase: (caseId: string) => request<CaseDetailResponse>(`/api/v1/cases/${caseId}`),
 
   listCases: (ids: string[]) =>
-    request<CaseSummary[]>(
-      `/api/v1/cases?ids=${encodeURIComponent(ids.join(","))}`
-    ),
+    request<CaseSummary[]>(`/api/v1/cases?ids=${encodeURIComponent(ids.join(","))}`),
 
   getMessages: (caseId: string) =>
     request<ChatMessage[]>(`/api/v1/cases/${caseId}/messages`),
 
-  createCase: (query: string) =>
+  createCase: (query: string, language: Locale = "en") =>
     request<CreateCaseResponse>("/api/v1/cases", {
       method: "POST",
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query, language }),
     }),
 
-  sendMessage: (caseId: string, message: string) =>
+  sendMessage: (caseId: string, message: string, language: Locale = "en") =>
     request<ChatMessageResponse>(`/api/v1/chat/${caseId}/message`, {
       method: "POST",
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, language }),
     }),
 
-  draftGrievance: (caseId: string, extraDetails: Record<string, string> = {}) =>
+  draftGrievance: (caseId: string, extraDetails: Record<string, string> = {}, language: Locale = "en") =>
     request<DraftResponse>("/api/v1/drafts/grievance", {
       method: "POST",
-      body: JSON.stringify({ case_id: caseId, extra_details: extraDetails }),
+      body: JSON.stringify({ case_id: caseId, extra_details: extraDetails, language }),
     }),
 
-  draftRti: (caseId: string, extraDetails: Record<string, string> = {}) =>
+  draftRti: (caseId: string, extraDetails: Record<string, string> = {}, language: Locale = "en") =>
     request<DraftResponse>("/api/v1/drafts/rti", {
       method: "POST",
-      body: JSON.stringify({ case_id: caseId, extra_details: extraDetails }),
+      body: JSON.stringify({ case_id: caseId, extra_details: extraDetails, language }),
     }),
 
-  draftForm: (caseId: string, extraDetails: Record<string, string> = {}) =>
+  draftForm: (caseId: string, extraDetails: Record<string, string> = {}, language: Locale = "en") =>
     request<DraftResponse>("/api/v1/drafts/form", {
       method: "POST",
-      body: JSON.stringify({ case_id: caseId, extra_details: extraDetails }),
+      body: JSON.stringify({ case_id: caseId, extra_details: extraDetails, language }),
     }),
 };
 
 export function warmBackend() {
-  void api.health().catch(() => {
-    /* ignore */
-  });
+  void api.health().catch(() => {});
 }

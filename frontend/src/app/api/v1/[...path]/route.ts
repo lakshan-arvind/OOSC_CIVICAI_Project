@@ -91,8 +91,14 @@ export async function POST(
   if (segments.length === 1 && segments[0] === "cases") {
     const query = String(body.query || "").trim();
     if (!query) return error("Query is required.");
+    const language = String(body.language || "en");
     const caseId = crypto.randomUUID();
-    const workflow = runWorkflow({ caseId, userQuery: query, latestMessage: query });
+    const workflow = runWorkflow({
+      caseId,
+      userQuery: query,
+      latestMessage: query,
+      language: language === "hi" || language === "ta" ? language : "en",
+    });
     const record = createCaseRecord(query, workflow);
     return json({
       case_id: record.id,
@@ -107,10 +113,12 @@ export async function POST(
     if (!message) return error("Message is required.");
     const record = getCaseRecord(caseId);
     if (!record) return error("Case not found.", 404);
+    const language = String(body.language || record.workflow.language || "en");
     const workflow = runWorkflow({
       caseId,
       userQuery: record.initial_query,
       latestMessage: message,
+      language: language === "hi" || language === "ta" ? language : "en",
       prior: record.workflow,
     });
     const updated = updateCaseRecord(caseId, workflow, message);
@@ -129,11 +137,13 @@ export async function POST(
     if (!record) return error("Case not found.", 404);
     const facts = mergeApplicantFacts(record.workflow.facts, extra);
     const jur = record.workflow.jurisdiction;
+    const language = String(body.language || record.workflow.language || "en");
+    const locale = language === "hi" || language === "ta" ? language : "en";
     const docType = segments[1];
     let document;
-    if (docType === "rti") document = generateRtiDraft(facts, jur);
-    else if (docType === "form") document = generateFormDraft(facts, jur);
-    else if (docType === "grievance") document = generateGrievanceDraft(facts, jur);
+    if (docType === "rti") document = generateRtiDraft(facts, jur, locale);
+    else if (docType === "form") document = generateFormDraft(facts, jur, locale);
+    else if (docType === "grievance") document = generateGrievanceDraft(facts, jur, locale);
     else return error("Unknown draft type.", 404);
     return json({ case_id: caseId, document });
   }

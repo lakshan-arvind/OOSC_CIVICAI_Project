@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { PastCasesMobileToggle, PastCasesSidebar } from "@/components/PastCasesSidebar";
 
 interface AppShellProps {
@@ -37,8 +38,13 @@ export function AppShell({
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center justify-end border-b border-stone-200/60 bg-white/50 px-4 py-2 md:hidden">
-          <PastCasesMobileToggle onClick={() => setMobileOpen(true)} count={pastCount} />
+        <div className="flex items-center justify-between gap-3 border-b border-stone-200/60 bg-white/50 px-4 py-2">
+          <div className="md:hidden">
+            <PastCasesMobileToggle onClick={() => setMobileOpen(true)} count={pastCount} />
+          </div>
+          <div className="ml-auto">
+            <LanguageSelector />
+          </div>
         </div>
         <div className="min-w-0 flex-1">{children}</div>
       </div>
